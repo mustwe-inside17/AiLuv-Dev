@@ -1,0 +1,115 @@
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Miguel Simulator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      /* Custom scrollbar for a sleek look */
+      ::-webkit-scrollbar {
+        width: 8px;
+      }
+      ::-webkit-scrollbar-track {
+        background: #fdf2f8; 
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #fbcfe8; 
+        border-radius: 4px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #f9a8d4; 
+      }
+
+      /* Character Animations */
+      @keyframes wiggle {
+        0%, 100% { transform: rotate(-3deg); }
+        50% { transform: rotate(3deg); }
+      }
+      
+      @keyframes bounce-soft {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-10px) scale(1.02); }
+      }
+
+      @keyframes shake-hard {
+        0%, 100% { transform: translateX(0); }
+        25% { transform: translateX(-5px) rotate(-5deg); }
+        75% { transform: translateX(5px) rotate(5deg); }
+      }
+
+      @keyframes float-up {
+        0% { opacity: 1; transform: translateY(0) scale(0.5); }
+        100% { opacity: 0; transform: translateY(-80px) scale(1.5); }
+      }
+
+      /* UI Feedback Animations */
+      @keyframes pop-text {
+        0% { opacity: 0; transform: translateY(0) scale(0.5); }
+        20% { opacity: 1; transform: translateY(-10px) scale(1.2); }
+        100% { opacity: 0; transform: translateY(-40px) scale(1); }
+      }
+
+      @keyframes level-up-pulse {
+        0% { box-shadow: 0 0 0 0 rgba(236, 72, 153, 0.4); }
+        70% { box-shadow: 0 0 0 10px rgba(236, 72, 153, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(236, 72, 153, 0); }
+      }
+
+      @keyframes confetti-fall {
+        0% { transform: translateY(-10px) rotate(0deg); opacity: 1; }
+        100% { transform: translateY(100px) rotate(360deg); opacity: 0; }
+      }
+
+      /* Toast Animations */
+      @keyframes toast-slide-in {
+        0% { transform: translateY(-100%) scale(0.9); opacity: 0; }
+        60% { transform: translateY(10%) scale(1.05); opacity: 1; }
+        100% { transform: translateY(0) scale(1); opacity: 1; }
+      }
+
+      @keyframes toast-slide-out {
+        0% { transform: scale(1); opacity: 1; }
+        100% { transform: scale(0.9) translateY(-20px); opacity: 0; }
+      }
+
+      .animate-wiggle { animation: wiggle 0.3s ease-in-out infinite; }
+      .animate-bounce-soft { animation: bounce-soft 0.5s ease-in-out; }
+      .animate-shake-hard { animation: shake-hard 0.4s ease-in-out; }
+      .animate-float-up { animation: float-up 1.5s ease-out forwards; }
+      .animate-pop-text { animation: pop-text 0.8s ease-out forwards; }
+      .animate-level-pulse { animation: level-up-pulse 1s infinite; }
+      
+      .animate-toast-in { animation: toast-slide-in 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+      .animate-toast-out { animation: toast-slide-out 0.3s ease-in forwards; }
+      
+      .confetti-piece {
+        position: absolute;
+        width: 8px;
+        height: 8px;
+        background: #ffd700;
+        animation: confetti-fall 2s ease-out forwards;
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.554.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.30.0",
+    "firebase/app": "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js",
+    "firebase/firestore": "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js",
+    "firebase/storage": "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js",
+    "firebase/analytics": "https://www.gstatic.com/firebasejs/10.8.0/firebase-analytics.js",
+    "firebase/": "https://aistudiocdn.com/firebase@^12.6.0/"
+  }
+}
+</script>
+</head>
+  <body class="bg-pink-50 text-gray-800 h-screen overflow-hidden selection:bg-pink-300 selection:text-white">
+    <div id="root"></div>
+  </body>
+</html>
