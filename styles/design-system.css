@@ -1,0 +1,141 @@
+:root {
+  color-scheme: light;
+  --game-bg: #f3f0ea;
+  --game-bg-accent: #e8ddd8;
+  --game-surface: #fffcf7;
+  --game-surface-raised: #ffffff;
+  --game-surface-muted: #eee9e3;
+  --game-text: #24212a;
+  --game-text-muted: #68616c;
+  --game-border: #dcd4cf;
+  --game-primary: #c93f5b;
+  --game-primary-hover: #ae304a;
+  --game-primary-soft: #f8e2e7;
+  --game-focus: #176b87;
+  --game-shadow: 0 18px 48px rgba(48, 35, 42, 0.12);
+  --game-radius: 20px;
+}
+
+.dark {
+  color-scheme: dark;
+  --game-bg: #0b1020;
+  --game-bg-accent: #17152a;
+  --game-surface: #141a2b;
+  --game-surface-raised: #1b2236;
+  --game-surface-muted: #20283d;
+  --game-text: #f5f0f2;
+  --game-text-muted: #b7afbb;
+  --game-border: #343b50;
+  --game-primary: #ff6b86;
+  --game-primary-hover: #ff8ba0;
+  --game-primary-soft: #402331;
+  --game-focus: #62c5dd;
+  --game-shadow: 0 22px 56px rgba(0, 0, 0, 0.34);
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  background:
+    radial-gradient(circle at 85% 8%, var(--game-bg-accent), transparent 32rem),
+    var(--game-bg);
+  color: var(--game-text);
+  font-family: "Outfit", "Noto Sans Thai", system-ui, sans-serif;
+  font-weight: 400;
+  letter-spacing: -0.005em;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+[tabindex]:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--game-focus) 70%, transparent);
+  outline-offset: 3px;
+}
+
+.game-shell {
+  background: color-mix(in srgb, var(--game-surface) 96%, transparent);
+  border: 1px solid var(--game-border);
+  box-shadow: var(--game-shadow);
+}
+
+.game-nav {
+  background: var(--game-surface);
+  border-color: var(--game-border);
+  box-shadow: 0 -8px 28px rgba(48, 35, 42, 0.08);
+}
+
+.game-panel,
+.resource-chip {
+  background: var(--game-surface-raised);
+  border: 1px solid var(--game-border);
+  color: var(--game-text);
+}
+
+.resource-chip {
+  min-height: 32px;
+}
+
+.game-eyebrow {
+  color: var(--game-primary);
+  font-size: 0.75rem;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.game-muted {
+  color: var(--game-text-muted);
+}
+
+.game-primary {
+  color: var(--game-primary);
+}
+
+.game-choice {
+  min-height: 64px;
+  background: var(--game-surface-raised);
+  border: 1px solid var(--game-border);
+  color: var(--game-text);
+}
+
+.game-choice:hover:not(:disabled) {
+  border-color: var(--game-primary);
+  background: var(--game-primary-soft);
+}
+
+.game-choice:disabled {
+  cursor: wait;
+  opacity: 0.62;
+}
+
+.game-icon-button {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+@media (min-width: 768px) {
+  .game-shell { border-radius: var(--game-radius); }
+  .game-nav { box-shadow: -8px 0 28px rgba(48, 35, 42, 0.08); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .star,
+  .animate-gradient-move,
+  .animate-blob,
+  .animate-magical-shine {
+    animation: none !important;
+  }
+}
