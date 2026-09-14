@@ -1,3 +1,4 @@
+import { getStoryPrompt, redactPilotIdentity } from './storyContext';
 
 import { GoogleGenAI, LiveServerMessage, Modality, Type, FunctionDeclaration } from "@google/genai";
 import { CharacterId, Mood, RelationshipTier } from "../types";
@@ -355,7 +356,7 @@ export class GeminiLiveService {
           speechConfig: {
             voiceConfig: { prebuiltVoiceConfig: { voiceName } },
           },
-          systemInstruction,
+          systemInstruction: redactPilotIdentity(systemInstruction) + getStoryPrompt(store.story, charId),
           tools: [{ functionDeclarations: [updateChemistryTool, updateLoveScoreTool, updateMoodTool, addMemoryTool] }],
           outputAudioTranscription: {},
           inputAudioTranscription: {},

@@ -90,12 +90,12 @@ export const StatusBar: React.FC<StatusBarProps> = ({ energy, maxEnergy, level, 
   return (
     <div className="relative z-[60] w-full pt-safe transition-all duration-300 pointer-events-none pb-0 font-sans">
         {/* SINGLE ROW HUD */}
-        <div className="flex justify-between items-center w-full px-1 sm:px-2 pt-1.5 sm:pt-2 gap-1 sm:gap-1.5 overflow-hidden">
+        <div className="flex justify-between items-center w-full px-1.5 sm:px-2 pt-1 sm:pt-2 gap-1 sm:gap-1.5">
             
             {/* LEFT: Profile and level */}
             <div className="resource-chip pointer-events-auto flex items-center gap-1 sm:gap-1.5 rounded-xl p-0.5 pr-1.5 sm:pr-2.5 shadow-sm shrink-0 transition-transform active:scale-95">
                 
-                <div className="relative w-[26px] h-[26px] sm:w-[28px] sm:h-[28px] flex items-center justify-center shrink-0">
+                <div className="relative w-[24px] h-[24px] sm:w-[28px] sm:h-[28px] flex items-center justify-center shrink-0">
                     <svg className="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 28 28">
                         <circle cx="14" cy="14" r="12" stroke="currentColor" strokeWidth="2" fill="none" className="text-white/60 dark:text-slate-800/60" />
                     </svg>
@@ -106,7 +106,7 @@ export const StatusBar: React.FC<StatusBarProps> = ({ energy, maxEnergy, level, 
                             className="text-indigo-500 shadow-xl transition-all duration-1000 ease-out" strokeLinecap="round" />
                     </svg>
 
-                    <div className="w-[20px] h-[20px] sm:w-[22px] sm:h-[22px] rounded-full overflow-hidden bg-slate-200 dark:bg-slate-800 shadow-inner z-10 flex items-center justify-center">
+                    <div className="w-[18px] h-[18px] sm:w-[22px] sm:h-[22px] rounded-full overflow-hidden bg-slate-200 dark:bg-slate-800 shadow-inner z-10 flex items-center justify-center">
                         <img src={getAvatarUrl()} alt="Avatar" className="w-full h-full object-cover" />
                     </div>
 
@@ -118,14 +118,14 @@ export const StatusBar: React.FC<StatusBarProps> = ({ energy, maxEnergy, level, 
                 </div>
 
                 <div className="flex flex-row items-center justify-center gap-[3px] sm:gap-[4px] pl-0.5">
-                    <span className="text-[11px] font-bold text-slate-800 dark:text-white leading-none tracking-tight max-w-[42px] sm:max-w-[70px] truncate">{userProfile?.name || 'Player'}</span>
+                    <span className="text-[10px] sm:text-[11px] font-bold text-slate-800 dark:text-white leading-none tracking-tight max-w-[36px] xs:max-w-[48px] sm:max-w-[70px] truncate">{userProfile?.name || 'Player'}</span>
                     <div className="w-[1px] h-2.5 bg-slate-200 dark:bg-slate-700 rounded-full"></div>
-                    <span className="text-[10px] font-extrabold uppercase text-indigo-600 dark:text-indigo-300 tracking-wide leading-none">Lv.<span className="ml-[1px]">{level}</span></span>
+                    <span className="text-[9px] sm:text-[10px] font-extrabold uppercase text-indigo-600 dark:text-indigo-300 tracking-wide leading-none">Lv.<span className="ml-[1px]">{level}</span></span>
                 </div>
             </div>
 
             {/* RIGHT: Resources List */}
-            <div className="pointer-events-auto flex items-center justify-end gap-0.5 sm:gap-1 shrink-0 overflow-visible">
+            <div className="pointer-events-auto flex items-center justify-end gap-1 sm:gap-1.5 shrink-0">
                 
                 {/* Energy */}
                 <div className={`resource-chip flex items-center rounded-xl p-0.5 shadow-sm shrink min-w-0 transition-colors duration-300 ${
@@ -136,12 +136,12 @@ export const StatusBar: React.FC<StatusBarProps> = ({ energy, maxEnergy, level, 
                     <div className={`p-0.5 sm:p-1 rounded-full flex items-center justify-center shrink-0 ${isOvercharged ? 'bg-red-500 animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.6)]' : 'bg-orange-500/20'}`}>
                         <Zap size={11} className={isOvercharged ? "text-white fill-white" : "text-orange-500 fill-orange-500"} />
                     </div>
-                    <span className={`text-[11px] font-extrabold pl-1 pr-1.5 leading-none truncate transition-colors duration-300 ${
+                    <span className={`text-[10px] sm:text-[11px] font-extrabold pl-1 pr-1 sm:pr-1.5 leading-none truncate transition-colors duration-300 ${
                         isOvercharged 
                         ? 'text-red-600 dark:text-red-400 drop-shadow-[0_0_4px_rgba(239,68,68,0.5)]' 
                         : 'text-slate-800 dark:text-white'
                     }`}>
-                        {Math.floor(energy)}<span className={`text-[10px] font-medium ${isOvercharged ? 'text-red-500/80' : 'game-muted'}`}>/{Math.floor(maxEnergy)}</span>
+                        {Math.floor(energy)}<span className={`text-[9px] sm:text-[10px] font-medium ${isOvercharged ? 'text-red-500/80' : 'game-muted'}`}>/{Math.floor(maxEnergy)}</span>
                     </span>
                 </div>
 
@@ -150,7 +150,7 @@ export const StatusBar: React.FC<StatusBarProps> = ({ energy, maxEnergy, level, 
                     <div className="p-0.5 sm:p-1 rounded-full flex items-center justify-center bg-yellow-400/20 shrink-0">
                         <AnimatedIcon type="coin" size={11} />
                     </div>
-                    <span className="text-[11px] font-extrabold pl-1 pr-1.5 leading-none text-slate-800 dark:text-white truncate">
+                    <span className="text-[10px] sm:text-[11px] font-extrabold pl-1 pr-1 sm:pr-1.5 leading-none text-slate-800 dark:text-white truncate">
                         {Math.floor(gold).toLocaleString()}
                     </span>
                 </div>
@@ -160,35 +160,39 @@ export const StatusBar: React.FC<StatusBarProps> = ({ energy, maxEnergy, level, 
                     <div className="p-0.5 sm:p-1 rounded-full flex items-center justify-center bg-cyan-400/20 shrink-0">
                         <AnimatedIcon type="gem" size={11} />
                     </div>
-                    <span className="text-[11px] font-extrabold px-0.5 sm:px-1 leading-none text-slate-800 dark:text-white truncate">
+                    <span className="text-[10px] sm:text-[11px] font-extrabold px-0.5 sm:px-1 leading-none text-slate-800 dark:text-white truncate">
                         {diamonds.toLocaleString()}
                     </span>
-                    <span className="w-[18px] h-[18px] bg-cyan-600 text-white rounded-md flex items-center justify-center shadow-sm shrink-0">
-                        <Plus size={9} strokeWidth={3} />
+                    <span className="w-4 h-4 sm:w-[18px] sm:h-[18px] bg-cyan-600 text-white rounded-md flex items-center justify-center shadow-sm shrink-0">
+                        <Plus size={8} strokeWidth={3} />
                     </span>
                 </button>
 
                 {/* Inventory Button */}
                 <button 
+                    id="btn-statusbar-inventory"
                     onClick={onOpenInventory} 
-                    className="game-icon-button game-panel relative rounded-xl flex items-center justify-center shadow-sm shrink-0 active:scale-95 transition-all"
+                    className="w-[30px] h-[30px] sm:w-[32px] sm:h-[32px] md:w-[36px] md:h-[36px] game-panel relative rounded-xl flex items-center justify-center shadow-sm shrink-0 active:scale-90 transition-all cursor-pointer hover:border-indigo-400/60"
                     title="กระเป๋าเดินทาง (Inventory)"
+                    aria-label="เปิดกระเป๋าเดินทาง"
                 >
-                    <Backpack size={14} className="text-slate-700 dark:text-slate-200" />
+                    <Backpack className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-700 dark:text-slate-200" />
                     {totalInventoryCount > 0 && (
-                        <span className="absolute -top-0.5 -right-0.5 w-2 h-2 sm:w-2.5 sm:h-2.5 bg-indigo-500 rounded-full border-2 border-white dark:border-slate-900" />
+                        <span className="absolute -top-0.5 -right-0.5 w-2 h-2 sm:w-2.5 sm:h-2.5 bg-indigo-500 rounded-full border border-white dark:border-slate-900" />
                     )}
                 </button>
 
                 {/* Phone Button */}
                 <button 
+                    id="btn-statusbar-phone"
                     onClick={onTogglePhone || togglePhone} 
-                    className="game-icon-button game-panel relative rounded-xl flex items-center justify-center shadow-sm shrink-0 active:scale-95 transition-all"
+                    className="w-[30px] h-[30px] sm:w-[32px] sm:h-[32px] md:w-[36px] md:h-[36px] game-panel relative rounded-xl flex items-center justify-center shadow-sm shrink-0 active:scale-90 transition-all cursor-pointer hover:border-rose-400/60"
                     title="โทรศัพท์ (A-Phone)"
+                    aria-label="เปิดโทรศัพท์มือถือ"
                 >
-                    <Smartphone size={14} className="text-slate-700 dark:text-slate-200" />
+                    <Smartphone className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-700 dark:text-slate-200" />
                     {phoneBadgeCount > 0 && (
-                        <span className="absolute -top-1 -right-1 bg-rose-500 text-white text-[8px] sm:text-[9px] font-black px-0.5 sm:px-1 min-w-[12px] h-[12px] sm:min-w-[14px] sm:h-[14px] rounded-full flex items-center justify-center border-2 border-white dark:border-slate-900 animate-pulse">
+                        <span className="absolute -top-1 -right-1 bg-rose-500 text-white text-[8px] sm:text-[9px] font-black px-0.5 min-w-[13px] h-[13px] sm:min-w-[15px] sm:h-[15px] rounded-full flex items-center justify-center border border-white dark:border-slate-900 shadow-sm animate-pulse leading-none">
                             {phoneBadgeCount > 9 ? '9+' : phoneBadgeCount}
                         </span>
                     )}

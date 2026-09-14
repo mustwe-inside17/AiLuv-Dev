@@ -1,5 +1,6 @@
 {
   "name": "AiLuv Project - 0.7 (BETA TEST3) ",
   "description": "A futuristic, dark-mode AI dating simulator where you manage energy and affection while chatting with Miguel.",
-  "requestFramePermissions": ["microphone"]
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

@@ -1,3 +1,5 @@
+import { StoryKeys } from './story/StoryKeys';
+import { emptyStoryProgress } from '../domain/story/storyEngine';
 
 import React, { useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
@@ -14,13 +16,14 @@ interface InventoryModalProps {
     onRecycle?: (item: ShopItem) => void; // NEW PROP
 }
 
-type TabType = 'consumable' | 'gadget' | 'gift' | 'fashion'; 
+type TabType = 'key' | 'consumable' | 'gadget' | 'gift' | 'fashion'; 
 
 export const InventoryModal: React.FC<InventoryModalProps> = ({ onClose, onConsume, onRecycle }) => {
     const { inventory, ownedStyles } = useGameStore(useShallow(state => ({
         inventory: state.inventory,
         ownedStyles: state.ownedStyles
     })));
+    const story = useGameStore(state => state.story);
     const [activeTab, setActiveTab] = useState<TabType>('consumable');
     const [isRecycleMode, setIsRecycleMode] = useState(false); // NEW STATE: Toggle Recycle
 
@@ -59,6 +62,7 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({ onClose, onConsu
                     </div>
                     <div className="flex gap-2">
                         {/* RECYCLE TOGGLE */}
+                        <button onClick={() => { setActiveTab('key'); setIsRecycleMode(false); }} className="flex-1 min-w-[70px] py-3 font-bold text-violet-500">Key</button>
                         <button 
                             onClick={() => setIsRecycleMode(!isRecycleMode)}
                             className={`p-2 rounded-full transition-all flex items-center gap-2 px-3 ${isRecycleMode ? 'bg-yellow-400 text-yellow-900 shadow-md animate-pulse' : 'bg-gray-200 dark:bg-slate-800 text-gray-500 hover:text-gray-700'}`}
@@ -117,6 +121,7 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({ onClose, onConsu
                 <div className="p-4 overflow-y-auto custom-scrollbar flex-1">
                     
                     {/* CONSUMABLES TAB (FOOD) */}
+                    {activeTab === 'key' && <StoryKeys progress={story || emptyStoryProgress()} onOpenJournal={() => { onClose(); useGameStore.getState().openPhone('story'); }} />}
                     {activeTab === 'consumable' && (
                         <div className="grid grid-cols-2 gap-3">
                             {consumables.length === 0 ? (

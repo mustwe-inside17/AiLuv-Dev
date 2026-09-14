@@ -1,4 +1,5 @@
 
+import { mergeStoryCheckpoint, writeStoryCheckpoint } from '../services/storyCheckpoint';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { 
     auth, onAuthStateChanged, loadGameDataWithRetry, saveGameData, loadMessages, 
@@ -10,7 +11,7 @@ import {
     INITIAL_STATS, LOCATIONS, getRandomTheme 
 } from '../constants';
 import { getCharacterMoodOnArrival } from '../constants/characters';
-import { calculateDecayedChemistry } from '../utils/relationshipLogic';
+import { processGameStateChemistryDecay } from '../utils/relationshipLogic';
 import { useGameStore } from '../store/gameStore';
 import { checkAndDeliverStarterMails, checkAndDeliverDailyNews } from '../services/mailSystem';
 import { migrateQuestMessages } from '../domain/quests/questState';
@@ -86,6 +87,7 @@ export const useCloudSync = () => {
             lastEnergyUpdate: Date.now()
         };
 
+        if (user?.uid) { try { localStorage.removeItem(`ailuv_story_v1:${user.uid}`); } catch {} }
         replaceGameState(newState);
         setMessagesMap({ miguel: [], fia: [], peat: [], erin: [], marcus: [], lucas: [], bam: [], jellie: [], soul: [], mia: [] });
 
@@ -119,14 +121,11 @@ export const useCloudSync = () => {
         const newSessionId = Date.now().toString() + Math.random().toString().slice(2, 6);
         localSessionId.current = newSessionId;
 
-        loadMessages(user.uid).then(msgs => {
-            if (msgs) {
-                const migrated = Object.fromEntries(Object.entries(msgs).map(([charId, messages]) => [charId, migrateQuestMessages(messages as Message[])])) as Record<CharacterId, Message[]>;
-                setMessagesMap(prev => ({ ...prev, ...migrated }));
-            }
-        });
-
-        const result = await loadGameDataWithRetry(user.uid);
+        // [MARCUS FIX]: Synchronize message loading and game data with Promise.all to eliminate Race Condition
+        const [msgs, result] = await Promise.all([
+            loadMessages(user.uid),
+            loadGameDataWithRetry(user.uid)
+        ]);
 
         if (result.status === 'SUCCESS') {
             const { gameState: gs, userProfile: up } = result.data;
@@ -151,14 +150,33 @@ export const useCloudSync = () => {
             // [MARCUS FIX]: Theme Migration
             if (!gs.dailyThemes) gs.dailyThemes = { ...INITIAL_GAME_STATE.dailyThemes };
 
+            const defaultChars: CharacterId[] = ['miguel', 'fia', 'peat', 'erin', 'marcus', 'lucas', 'bam', 'jellie', 'soul', 'mia'];
+            const now = new Date();
+            const currentHour = now.getHours(); 
+            const todayStr = now.toDateString();
+
+            // --- [MARCUS FIX]: DAILY CHAT RESET CHECK ON INITIAL LOAD (6 AM Boundary) ---
+            const isNewDayChatReset = currentHour >= 6 && gs.lastChatResetDate !== todayStr;
+
+            if (isNewDayChatReset) {
+                console.log("🧹 [InitCloudData] Daily Reset due on launch (>=06:00). Clearing chat messages...");
+                const emptyMsgs: Record<CharacterId, Message[]> = {} as any;
+                defaultChars.forEach(c => emptyMsgs[c] = []);
+                setMessagesMap(emptyMsgs);
+                gs.lastChatResetDate = todayStr;
+                saveMessages(user.uid, emptyMsgs as any).catch(err => console.warn("Init empty messages save warning:", err));
+            } else if (msgs) {
+                const migrated = Object.fromEntries(
+                    Object.entries(msgs).map(([charId, messages]) => [charId, migrateQuestMessages(messages as Message[])])
+                ) as Record<CharacterId, Message[]>;
+                setMessagesMap(prev => ({ ...prev, ...migrated }));
+            }
+
             if (gs.tutorialStep === 'intro' || gs.tutorialStep === 'chat_guide') {
                 console.log("↺ Resetting stuck tutorial to Intro...");
                 gs.tutorialStep = 'intro';
                 setMessagesMap(prev => ({ ...prev, miguel: [] }));
             }
-
-            const defaultChars: CharacterId[] = ['miguel', 'fia', 'peat', 'erin', 'marcus', 'lucas', 'bam', 'jellie', 'soul', 'mia'];
-            const currentHour = new Date().getHours(); 
 
             defaultChars.forEach(char => {
                 if (gs.loveScores[char] === undefined) gs.loveScores[char] = 0;
@@ -193,27 +211,26 @@ export const useCloudSync = () => {
                 gs.activeDailyQuests = ['daily_login']; 
             }
 
-            const lastActiveTime = gs.lastEnergyUpdate || Date.now();
+            // --- [MARCUS FIX]: CHEMISTRY DECAY & DATE SCENE EXPIRATION PROCESS ---
+            const lastDecay = gs.lastChemistryDecayTime || gs.lastEnergyUpdate || Date.now();
             const currentTime = Date.now();
-            const hoursOffline = Math.floor((currentTime - lastActiveTime) / 3600000);
+            const decayResult = processGameStateChemistryDecay(
+                gs.chemistryScores,
+                gs.currentDateScene,
+                gs.currentLocation,
+                lastDecay,
+                currentTime
+            );
 
-            if (hoursOffline > 0 && gs.chemistryScores) {
-                const decayedChemistry = { ...gs.chemistryScores };
-                const loc = LOCATIONS[gs.currentLocation];
-                const activeDateCharId = gs.currentDateScene && loc ? loc.characterId : null;
+            gs.chemistryScores = decayResult.updatedChemistry;
+            gs.currentDateScene = decayResult.updatedDateScene;
+            gs.lastChemistryDecayTime = decayResult.newDecayTimestamp;
 
-                Object.keys(decayedChemistry).forEach(k => {
-                    const key = k as CharacterId;
-                    if (key === activeDateCharId) return; // Do not decay active date partner
-
-                    if (decayedChemistry[key] > 0) {
-                        decayedChemistry[key] = calculateDecayedChemistry(decayedChemistry[key], hoursOffline);
-                    }
-                });
-                gs.chemistryScores = decayedChemistry;
+            if (decayResult.dateExpired) {
+                console.log("⏳ [InitCloudData] Previous date session expired due to inactivity.");
             }
             
-            replaceGameState({ ...INITIAL_GAME_STATE, ...gs });
+            replaceGameState({ ...INITIAL_GAME_STATE, ...gs, story: mergeStoryCheckpoint(user.uid, gs.story) });
             setUserProfile(up);
 
             registerSession(user.uid, newSessionId).catch(e => console.warn("Session Reg Warning:", e));
@@ -311,11 +328,12 @@ export const useCloudSync = () => {
     useEffect(() => {
         if (!isDataLoaded) return;
         isDirtyRef.current = true;
-        const unsubscribe = useGameStore.subscribe(() => {
+        const unsubscribe = useGameStore.subscribe((state, previous) => {
+            if (user?.uid && state.story && state.story !== previous.story) writeStoryCheckpoint(user.uid, state.story);
             isDirtyRef.current = true;
         });
         return unsubscribe;
-    }, [isDataLoaded]);
+    }, [isDataLoaded, user?.uid]);
 
     useEffect(() => {
         if (isDataLoaded) isDirtyRef.current = true;

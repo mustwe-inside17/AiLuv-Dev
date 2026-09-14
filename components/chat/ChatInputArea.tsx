@@ -53,7 +53,7 @@ export const ChatInputArea: React.FC<ChatInputAreaProps> = ({
                 {showActions ? <XCircle size={20} /> : <Zap size={20} className={energy < 2 ? 'text-red-400 animate-pulse' : ''} fill={energy < 2 ? "currentColor" : "none"} />}
             </button>
             
-            <div className="flex-1 relative">
+            <div className="flex-1 min-w-0 relative">
                 <input 
                     ref={inputRef}
                     type="text" 

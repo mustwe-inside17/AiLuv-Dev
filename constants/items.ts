@@ -64,7 +64,7 @@ export const SHOP_ITEMS: ShopItem[] = [
 
     // MARKET GADGETS
     { id: 'gadget_music_pods', name: 'Music Alway Pods', cost: 2000, energyRestore: 0, emoji: getFluent3D('Musical note'), description: 'ฟังเพลงได้ทุกที่ (Music Player)', source: 'market', category: 'gadget', unlocksSkill: 'spotifi_premium' },
-    { id: 'gadget_mind_reader', name: 'Neon Soul Visor', cost: 350000, energyRestore: 0, emoji: getFluent3D('Sunglasses'), description: 'อ่านใจคน (เห็นความคิด)', source: 'market', category: 'gadget', unlocksSkill: 'mind_reader' },
+    { id: 'gadget_mind_reader', name: 'Neon Soul Visor', cost: 100000, energyRestore: 0, emoji: getFluent3D('Sunglasses'), description: 'อ่านใจคน (เห็นความคิด)', source: 'market', category: 'gadget', unlocksSkill: 'mind_reader' },
 
     // GIFTS / KEY ITEMS
     { id: 'gift_flowers', name: 'Bouquet', cost: 250, currency: 'diamond', energyRestore: 0, emoji: getFluent3D('Bouquet'), description: 'สัญลักษณ์แห่งความโรแมนติก', source: 'cafe', category: 'gift', unlocksTier: RelationshipTier.FLIRTING },

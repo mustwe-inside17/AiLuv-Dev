@@ -197,6 +197,7 @@ export const saveGameData = async (userId: string, gameState: GameState, userPro
     }, { merge: true });
   } catch (e) {
     console.warn("SaveGameData failed:", e);
+    throw e;
   }
 };
 

@@ -1,6 +1,7 @@
+import '../../styles/story.css';
 
 import React, { useState, useEffect } from 'react';
-import { Sparkles, Brain, Eye, Coins, Check, Gift, ShoppingBag, Shirt, Target, Zap, Heart, Gem, ArrowRight, Star, Crown } from 'lucide-react';
+import { KeyRound, RotateCcw, Sparkles, Brain, Eye, Coins, Check, Gift, ShoppingBag, Shirt, Target, Zap, Heart, Gem, ArrowRight, Star, Crown } from 'lucide-react';
 import { Message, CharacterId, CharacterQuest, RelationshipTier, DateScene } from '../../types';
 import { CHARACTER_DATA, SHOP_ITEMS } from '../../constants';
 import { FASHION_ITEMS } from '../../constants/fashion';
@@ -106,6 +107,8 @@ const parseMessageText = (input: any) => {
 };
 
 interface ChatMessageBubbleProps {
+    onStoryRetry?: (messageId: string) => void;
+    storyBusy?: boolean;
     message: Message;
     characterId: CharacterId;
     isDateMode: boolean;
@@ -122,6 +125,8 @@ interface ChatMessageBubbleProps {
 
 export const ChatMessageBubble: React.FC<ChatMessageBubbleProps> = ({
     message: msg,
+    onStoryRetry,
+    storyBusy,
     characterId,
     isDateMode,
     canReadMind,
@@ -153,7 +158,15 @@ export const ChatMessageBubble: React.FC<ChatMessageBubbleProps> = ({
     // Special case: If body is empty (pure narrative action), render as a specialized narrative bubble
     const isPureNarrative = narrativePart && !bodyPart && !msg.imageUrl && !msg.interactiveItem;
 
-    if (isPureNarrative) {
+    if (msg.storyInteraction && msg.storyInteraction.status !== 'complete') {
+        const waiting = msg.storyInteraction.status === 'pending' && storyBusy;
+        return <div className="story-ui story-retry" role="status">
+            <KeyRound size={15} aria-hidden="true" /><div><strong>{waiting ? 'กำลังต่อเรื่องราว…' : 'บทสนทนายังค้างอยู่'}</strong>
+            {!waiting && <p>ลองอีกครั้งได้ ของและความคืบหน้ายังเหมือนเดิม</p>}</div>
+            {!waiting && onStoryRetry && <button type="button" className="story-icon-button" disabled={storyBusy} aria-label="ลองบทสนทนาเรื่องราวอีกครั้ง" onClick={() => onStoryRetry(msg.id)}><RotateCcw size={17} /></button>}
+        </div>;
+    }
+    if (isPureNarrative && !msg.storyInteraction) {
         return (
             <div className="flex justify-center my-2 opacity-80 animate-in fade-in slide-in-from-bottom-1">
                 <span className="text-[10px] font-medium italic text-slate-500 dark:text-slate-400 bg-white/60 dark:bg-slate-800/60 px-3 py-1 rounded-full border border-gray-200 dark:border-white/5 shadow-sm">
@@ -170,6 +183,7 @@ export const ChatMessageBubble: React.FC<ChatMessageBubbleProps> = ({
     } else if (isDateMode && !isUser) {
         messageStyle = 'border border-purple-200 dark:border-purple-600/50 bg-purple-50 dark:bg-purple-900/10 text-slate-800 dark:text-gray-100 shadow-sm';
     }
+    if (msg.storyInteraction && !isUser) messageStyle = 'story-dialogue-bubble';
     if (isUser) {
         messageStyle = 'bg-gradient-to-br from-fuchsia-500 to-purple-600 dark:from-fuchsia-600 dark:to-purple-700 text-white rounded-tr-none border-none shadow-[0_0_10px_rgba(192,38,211,0.3)]';
     } else {
@@ -231,6 +245,7 @@ export const ChatMessageBubble: React.FC<ChatMessageBubbleProps> = ({
                         {/* NORMAL TEXT MESSAGE BUBBLE */}
                         {(bodyPart || msg.imageUrl || msg.interactiveItem || msg.isImageLoading) && (
                             <div className={`w-full rounded-2xl px-4 py-2.5 text-sm relative shadow-sm leading-relaxed group transition-all duration-300 ${messageStyle}`}>
+                                {msg.storyInteraction && !isUser && <div className="story-dialogue-label"><KeyRound size={12} aria-hidden="true" /><span>{msg.storyInteraction.title}</span></div>}
                                 {msg.isEventMessage && !isUser && <span className="absolute -top-2 -right-2 bg-purple-500 text-white text-[8px] font-bold px-1.5 py-0.5 rounded-md shadow-sm z-10 tracking-wider">STORY</span>}
                             
                             {/* IMAGE RENDERING */}

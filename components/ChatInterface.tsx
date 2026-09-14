@@ -15,6 +15,7 @@ import { geminiLiveService } from '../services/geminiLiveService';
 
 // Import New Sub-Components
 import { ChatMessageBubble } from './chat/ChatMessageBubble';
+import { StoryChatPanel, StoryContinuation } from './story/StoryChatPanel';
 import { ChatInputArea } from './chat/ChatInputArea';
 import { ScenarioMenu } from './chat/ScenarioMenu';
 import { DateSelectionModal } from './modals/DateSelectionModal'; // NEW IMPORT
@@ -404,8 +405,8 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ characterId, messa
       ))}
 
       {/* Header Bar */}
-      <div className={`flex items-center justify-between px-6 py-3 border-b border-gray-100 dark:border-white/5 shrink-0 bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm relative z-20 ${onDragStart ? 'mt-3 md:mt-0' : ''}`}>
-         <div className="flex items-center gap-3 ml-2">
+      <div className={`ailuv-chat-header flex items-center justify-between px-6 py-3 border-b border-gray-100 dark:border-white/5 shrink-0 bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm relative z-20 ${onDragStart ? 'mt-3 md:mt-0' : ''}`}>
+         <div className="chat-person flex items-center gap-3 ml-2 min-w-0">
             <div className="relative">
                 <div className={`w-12 h-12 rounded-full border-2 shadow-md overflow-hidden bg-gray-200 dark:bg-slate-800 ${isDateMode ? 'border-purple-500 ring-2 ring-purple-500/30' : 'border-white dark:border-slate-700'}`}>
                     {avatarUrl ? <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" /> : <div className="w-full h-full animate-pulse bg-gray-300 dark:bg-slate-700"/>}
@@ -425,9 +426,15 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ characterId, messa
             )}
 
             <div>
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1.5 flex-wrap">
                     <h3 className={`font-bold text-sm ${isDateMode ? 'text-purple-600 dark:text-purple-300' : 'text-slate-800 dark:text-white'}`}>{CHARACTER_DATA[characterId].name}</h3>
                     {currentTier === RelationshipTier.PARTNER && <Heart size={10} className="fill-red-500 text-red-500" />}
+                    {partyMemberId && partyMemberId !== characterId && (
+                        <span className="flex items-center gap-1 text-[11px] text-pink-600 dark:text-pink-300 font-medium bg-pink-50 dark:bg-pink-950/50 px-2 py-0.5 rounded-full border border-pink-200 dark:border-pink-800/40 shadow-xs">
+                            <Users size={10} className="text-pink-500" />
+                            <span>+ {CHARACTER_DATA[partyMemberId].name}</span>
+                        </span>
+                    )}
                 </div>
                 <div className="flex items-center gap-1.5">
                     <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wide">{currentMood}</span>
@@ -440,7 +447,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ characterId, messa
             </div>
 
              {themeData && (
-                 <div className="relative z-50 ml-1">
+                 <div className="chat-vibe relative z-50 ml-1">
                      <button
                         onClick={() => setShowVibeTooltip(!showVibeTooltip)}
                         className={`
@@ -474,7 +481,8 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ characterId, messa
                  </div>
              )}
          </div>
-         <div className="flex items-center gap-3">
+         <div className="chat-header-actions flex items-center gap-3 shrink-0">
+        <StoryChatPanel characterId={characterId} disabled={!!(isTyping || disabled || isVoiceMode)} onAction={command => onSendMessage('@story:' + JSON.stringify(command))} />
              {/* [MARCUS FIX] INVITE DATE BUTTON - Conditionally Rendered with Visual Upgrade */}
              {canInviteDate && !isDateMode && !disabled && (
                  <button 
@@ -539,6 +547,8 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ characterId, messa
                 isDateMode={isDateMode}
                 canReadMind={canReadMind}
                 onImageClick={onImageClick}
+                onStoryRetry={id => onSendMessage('@story-retry:' + id)}
+                storyBusy={isTyping}
                 onScrollToBottom={scrollToBottom}
                 partyMemberId={partyMemberId}
                 energy={energy}
@@ -589,6 +599,8 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ characterId, messa
             cost={SCENARIO_COST}
         />
 
+
+        <StoryContinuation characterId={characterId} disabled={!!(isTyping || disabled || isVoiceMode)} onAction={command => onSendMessage('@story:' + JSON.stringify(command))} />
         <ChatInputArea 
             inputText={inputText}
             setInputText={setInputText}

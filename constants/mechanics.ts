@@ -64,18 +64,8 @@ export const DAILY_LOGIN_REWARDS = [
 ];
 
 // --- INITIAL MAILS ---
-const INITIAL_MAILS: MailItem[] = [
-    {
-        id: 'mail_welcome',
-        sender: 'AiLuv Team',
-        subject: 'Welcome to AiLuv City! 🌆',
-        body: 'Welcome, คุณ! This is the start of your new life. Use this mail system to receive updates, rewards, and secret messages from the city\'s inhabitants. Have fun!',
-        timestamp: Date.now(),
-        isRead: false,
-        type: 'system',
-        rewards: { gold: 100, diamonds: 50 }
-    }
-];
+// Starter mails are managed and delivered via mailSystem.ts with hasReceivedStarterMails flag
+const INITIAL_MAILS: MailItem[] = [];
 
 export const INITIAL_GAME_STATE: GameState = {
         energy: INITIAL_ENERGY,
@@ -192,6 +182,10 @@ export const INITIAL_GAME_STATE: GameState = {
         
         // [MARCUS NEW]: MAIL SYSTEM
         mails: INITIAL_MAILS,
+        hasReceivedStarterMails: false,
+
+        // CHEMISTRY DECAY TIMESTAMP
+        lastChemistryDecayTime: Date.now(),
 
         // INVESTMENTS
         activeStakes: [],

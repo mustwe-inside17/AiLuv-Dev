@@ -53,6 +53,22 @@ export const ActiveTaskOverlay: React.FC<ActiveTaskOverlayProps> = ({ activeTask
     // Calculate precise percentage based on Date.now() instead of coarse timeLeft
     const percentDone = Math.max(0, Math.min(100, ((Date.now() - activeTask.startTime) / totalDuration) * 100));
 
+    // [MARCUS CRAFT]: Dedicated open, unboxed, airy arena for Gym Workout
+    if (activeTask.type === 'gym') {
+        return (
+            <div className="absolute inset-0 z-50 overflow-hidden pointer-events-auto select-none touch-none animate-in fade-in duration-300">
+                <TimingBarGame 
+                    duration={totalDuration}
+                    timeLeft={timeLeft}
+                    taskName={activeTask.name}
+                    percentDone={percentDone}
+                    isFinishing={isFinishing}
+                    onScoreUpdate={(s) => onUpdateScore?.(s)}
+                />
+            </div>
+        );
+    }
+
     return (
         <div className="absolute inset-0 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md z-50 flex flex-col items-center justify-center p-8 text-center animate-in fade-in duration-300 rounded-[2rem] overflow-hidden pointer-events-auto select-none touch-none">
             
@@ -61,7 +77,7 @@ export const ActiveTaskOverlay: React.FC<ActiveTaskOverlayProps> = ({ activeTask
             <div className="absolute inset-0 z-30 bg-transparent w-full h-full pointer-events-none" />
 
             <div className={`w-24 h-24 bg-gradient-to-br from-pink-100 to-purple-100 dark:from-slate-800 dark:to-slate-700 rounded-full flex items-center justify-center text-5xl mb-6 shadow-xl shadow-pink-100 dark:shadow-none border-4 border-white dark:border-slate-600 relative z-10 transition-all duration-500 ${isFinishing ? 'scale-125 bg-green-100 border-green-400' : 'animate-bounce'}`}>
-                {isFinishing ? <CheckCircle2 size={48} className="text-green-500 animate-in zoom-in spin-in-90 duration-500" /> : (activeTask.type === 'work' ? '💼' : '💪')}
+                {isFinishing ? <CheckCircle2 size={48} className="text-green-500 animate-in zoom-in spin-in-90 duration-500" /> : '💼'}
             </div>
             
             <h2 className="text-2xl font-extrabold text-gray-800 dark:text-white mb-2 relative z-10">
@@ -70,20 +86,12 @@ export const ActiveTaskOverlay: React.FC<ActiveTaskOverlayProps> = ({ activeTask
             
             {/* MINI-GAME SLOT */}
             {!isFinishing && (
-                activeTask.type === 'gym' ? (
-                    <TimingBarGame 
-                        duration={totalDuration}
-                        timeLeft={timeLeft}
-                        onScoreUpdate={(s) => onUpdateScore?.(s)}
-                    />
-                ) : (
-                    <BubbleGame 
-                        taskType={activeTask.type}
-                        duration={totalDuration}
-                        timeLeft={timeLeft}
-                        onScoreUpdate={(s) => onUpdateScore?.(s)}
-                    />
-                )
+                <BubbleGame 
+                    taskType={activeTask.type}
+                    duration={totalDuration}
+                    timeLeft={timeLeft}
+                    onScoreUpdate={(s) => onUpdateScore?.(s)}
+                />
             )}
 
             <div className={`text-5xl font-mono font-bold mb-8 tabular-nums relative z-10 transition-all duration-300 ${isFinishing ? 'text-green-500 scale-110' : timeLeft <= 3 ? 'text-red-500 animate-pulse' : 'text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-purple-500'}`}>
@@ -94,7 +102,7 @@ export const ActiveTaskOverlay: React.FC<ActiveTaskOverlayProps> = ({ activeTask
                 <div className={`h-full transition-all duration-200 ease-linear ${isFinishing ? 'bg-green-500' : 'bg-gradient-to-r from-pink-400 to-purple-500'}`} style={{ width: `${percentDone}%` }}></div>
             </div>
             
-            {!isFinishing && <p className="mt-4 text-xs text-gray-400 animate-pulse relative z-10">{activeTask.type === 'gym' ? 'Tap target area for max power!' : 'Tap bubbles for bonus!'}</p>}
+            {!isFinishing && <p className="mt-4 text-xs text-gray-400 animate-pulse relative z-10">Tap bubbles for bonus!</p>}
         </div>
     );
 };

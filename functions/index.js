@@ -15,7 +15,7 @@ exports.generateCharacterResponse = onCall(
   async (request) => {
     
     // 🧪 HARDCODE TEST: ใส่ Key บอสตรงนี้เลย! (ห้ามลืมลบออกตอนขึ้น Prod นะคะ!)
-    const apiKey = "AIzaSyAcxwiXqUoc2XH8jktM_Qs-0ZDhIl4VhZY"; 
+    const apiKey = process.env.GOOGLE_API_KEY; 
     
     if (!apiKey) {
       throw new HttpsError('failed-precondition', 'Server Error: API Key missing.');

@@ -169,6 +169,8 @@ export interface DateScene {
   name: string;
   narrativeStatus: string;
   bgImage: string;
+  startedAt?: number;
+  lastInteractionAt?: number;
 }
 
 export interface CharacterQuestChoice {
@@ -230,6 +232,12 @@ export interface PendingQuestReward {
 }
 
 export interface Message {
+  storyInteraction?: {
+    command: import('./domain/story/types').StoryCommand;
+    status: 'pending' | 'error' | 'complete';
+    title: string;
+    playerText: string;
+  };
   id: string;
   sender: CharacterId | 'user' | 'system';
   text: string;
@@ -538,6 +546,7 @@ export interface StockPortfolio {
 }
 
 export interface GameState {
+  story?: import('./domain/story/types').StoryProgress;
   energy: number;
   maxEnergy: number; 
   gold: number;
@@ -655,6 +664,10 @@ export interface GameState {
   
   // MAIL SYSTEM (NEW)
   mails: MailItem[];
+  hasReceivedStarterMails?: boolean;
+
+  // CHEMISTRY DECAY TIMESTAMP
+  lastChemistryDecayTime?: number;
 
   // DAILY CONVERSATION ARCHIVES (30 DAYS HISTORY)
   dailyChatArchives?: Record<CharacterId, DailyChatLog[]>;

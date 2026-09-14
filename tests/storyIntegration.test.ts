@@ -1,0 +1,21 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { useGameStore } from '../store/gameStore';
+import { INITIAL_GAME_STATE } from '../constants';
+test('game store integrates discovery, wrong recipient, reload and reveal without economy rewards', () => {
+ const store = useGameStore;
+ store.getState().replaceGameState({...INITIAL_GAME_STATE, currentLocation:'gym'});
+ const before = store.getState();
+ assert.equal(before.performStoryAction({type:'node',nodeId:'radio_hear_noise'},'fia').status,'completed');
+ assert.equal(store.getState().performStoryAction({type:'node',nodeId:'radio_open_locker'},'fia').status,'completed');
+ assert.equal(store.getState().performStoryAction({type:'present',itemId:'key_nyx_radio'},'fia').status,'wrong_character');
+ const saved = JSON.parse(JSON.stringify(store.getState()));
+ store.getState().replaceGameState(saved);
+ store.getState().setGameState({currentLocation:'market'});
+ assert.equal(store.getState().performStoryAction({type:'present',itemId:'key_nyx_radio'},'erin').status,'completed');
+ assert.ok(store.getState().story?.flags['radio.episode_complete']);
+ assert.equal(store.getState().energy,before.energy);
+ assert.equal(store.getState().gold,before.gold);
+ assert.deepEqual(store.getState().inventory,before.inventory);
+ assert.equal(store.getState().performStoryAction({type:'present',itemId:'key_nyx_radio'},'erin').status,'already_completed');
+});

@@ -3,11 +3,12 @@ import React, { useState, useEffect, useRef } from 'react';
 import { GameState, TimeOfDay, ActiveEvent, CharacterId, LocationId, EventTemplate, Mood, UserProfile, MailItem } from '../types';
 import { LOCATIONS, DAILY_QUEST_POOL_IDS, WEEKLY_QUEST_POOL_IDS, SECRET_MAIL_SCENARIOS, DAILY_NEWS_POOL } from '../constants'; // [MARCUS FIX] Added DAILY_NEWS_POOL
 import { calculateEnergyRegen } from '../services/secureEconomy';
-import { calculateDecayedChemistry } from '../utils/relationshipLogic';
+import { processGameStateChemistryDecay } from '../utils/relationshipLogic';
 import { generateDynamicEvent } from '../services/eventGenerator';
 import { runDailyDirector } from '../services/directorSystem'; 
 import { getRandomTheme } from '../constants/themes'; 
 import { useGameStore } from '../store/gameStore';
+import { useUIStore } from '../store/uiStore';
 import { checkAndDeliverDailyNews, checkAndDeliverSecretMail } from '../services/mailSystem';
 
 export const useGameLoop = (
@@ -46,42 +47,38 @@ export const useGameLoop = (
                 document.documentElement.classList.remove('dark');
             }
 
-            const timeSinceLastDecay = now - lastChemistryCheckRef.current;
+            // [MARCUS FIX]: Chemistry decay & Date scene expiration check using processGameStateChemistryDecay
+            const currentState = useGameStore.getState();
+            const lastDecay = currentState.lastChemistryDecayTime || currentState.lastEnergyUpdate || now;
             
-            // [MARCUS FIX]: Decay chemistry slowly (every 1 hour) and freeze decay during active Date
-            if (timeSinceLastDecay >= 3600000) { 
-                const hoursPassed = Math.floor(timeSinceLastDecay / 3600000);
-                
-                const currentState = useGameStore.getState();
-                if (currentState.chemistryScores) {
-                    const newChem = { ...currentState.chemistryScores };
-                    let hasChanges = false;
-                    
-                    const currentLoc = LOCATIONS[currentState.currentLocation];
-                    const activeDateCharId = currentState.currentDateScene && currentLoc ? currentLoc.characterId : null;
+            const decayResult = processGameStateChemistryDecay(
+                currentState.chemistryScores,
+                currentState.currentDateScene,
+                currentState.currentLocation,
+                lastDecay,
+                now
+            );
 
-                    Object.keys(newChem).forEach(key => {
-                        const charId = key as CharacterId;
-                        // [MARCUS FIX]: Do NOT decay chemistry if player is currently on a Date with this character!
-                        if (charId === activeDateCharId) return;
+            if (decayResult.hasChanges) {
+                const updates: Partial<GameState> = {
+                    chemistryScores: decayResult.updatedChemistry,
+                    currentDateScene: decayResult.updatedDateScene,
+                    lastChemistryDecayTime: decayResult.newDecayTimestamp
+                };
+                setGameState(updates);
 
-                        if (newChem[charId] > 0) {
-                            const oldVal = newChem[charId];
-                            newChem[charId] = calculateDecayedChemistry(oldVal, hoursPassed);
-                            if (newChem[charId] !== oldVal) hasChanges = true;
-                        }
+                if (decayResult.dateExpired && currentState.currentDateScene) {
+                    useUIStore.getState().addNotification({
+                        id: `date_expired_${Date.now()}`,
+                        title: 'Date Ended',
+                        message: 'ช่วงเวลาเดตสิ้นสุดลงแล้ว เนื่องจากไม่มีการพูดคุยเป็นเวลานาน',
+                        type: 'info'
                     });
-
-                    if (hasChanges) {
-                        setGameState({ chemistryScores: newChem });
-                    }
                 }
-                
-                lastChemistryCheckRef.current += (hoursPassed * 3600000);
             }
         };
 
-        const timer = setInterval(updateLoop, 1000); 
+        const timer = setInterval(updateLoop, 5000); 
         return () => clearInterval(timer);
     }, [setGameState]);
 
@@ -181,6 +178,33 @@ export const useGameLoop = (
             if (document.visibilityState === 'visible') {
                 updateEnergyAndDaily();
                 checkAndDeliverDailyNews();
+
+                // [MARCUS FIX]: Immediately process chemistry decay & date expiration when resuming app
+                const current = useGameStore.getState();
+                const now = Date.now();
+                const lastDecay = current.lastChemistryDecayTime || current.lastEnergyUpdate || now;
+                const decayRes = processGameStateChemistryDecay(
+                    current.chemistryScores,
+                    current.currentDateScene,
+                    current.currentLocation,
+                    lastDecay,
+                    now
+                );
+                if (decayRes.hasChanges) {
+                    setGameState({
+                        chemistryScores: decayRes.updatedChemistry,
+                        currentDateScene: decayRes.updatedDateScene,
+                        lastChemistryDecayTime: decayRes.newDecayTimestamp
+                    });
+                    if (decayRes.dateExpired && current.currentDateScene) {
+                        useUIStore.getState().addNotification({
+                            id: `date_expired_${Date.now()}`,
+                            title: 'Date Ended',
+                            message: 'ช่วงเวลาเดตสิ้นสุดลงแล้ว เนื่องจากไม่มีการพูดคุยเป็นเวลานาน',
+                            type: 'info'
+                        });
+                    }
+                }
             }
         };
         document.addEventListener("visibilitychange", handleVisibilityChange);

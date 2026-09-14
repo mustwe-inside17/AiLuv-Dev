@@ -257,6 +257,7 @@ export const App: React.FC = () => {
       processAIResponse,
       handleTaskComplete,
       handleAcceptQuest, // NEW
+      handleCloseQuestChoice, // NEW
       handleSelectQuestOption, // NEW CHOICE HANDLER
       handleCollectQuestReward, // NEW: Modal Completion
       handleConsumeItem, // NEW: For inventory
@@ -304,6 +305,8 @@ export const App: React.FC = () => {
   }, [isDataLoaded, refreshQuests]);
 
   // --- DAILY RESET & SLEEP LOGIC ---
+  const isResettingRef = useRef(false);
+
   useEffect(() => {
       if (!user || !isDataLoaded) return;
       const checkDailyReset = async () => {
@@ -318,87 +321,92 @@ export const App: React.FC = () => {
               // [MARCUS FIX]: Use current store state directly to avoid closure stale data
               const currentStore = useGameStore.getState();
               
-              if (currentStore.lastChatResetDate !== todayStr) {
+              if (currentStore.lastChatResetDate !== todayStr && !isResettingRef.current) {
+                  isResettingRef.current = true;
                   console.log("🧹 [Daily Reset] Clearing Chat History & Pruning Memories...");
                   
-                  // [MARCUS FIX]: Added 'mia' to the reset list
                   const targetChars: CharacterId[] = ['miguel', 'fia', 'peat', 'erin', 'marcus', 'lucas', 'bam', 'jellie', 'soul', 'mia'];
                   const emptyMessages: Record<string, Message[]> = {};
                   targetChars.forEach(c => emptyMessages[c] = []);
 
-                  // --- NEW: YESTERDAY MEMORY TAGS ---
-                  const newYesterdayTags: Record<string, string> = {};
-                  try {
-                      // Dynamically import to avoid circular dependency issues at the top level
-                      const { summarizeYesterdayTags } = await import('./services/mockAi');
-                      
-                      // Only summarize characters that have chat history
-                      const charsToSummarize = targetChars.filter(c => messagesMap[c] && messagesMap[c].length > 0);
-                      
-                      if (charsToSummarize.length > 0) {
-                          console.log(`[Daily Reset] Summarizing yesterday's events for ${charsToSummarize.length} characters...`);
-                          // Process sequentially to avoid rate limits
-                          for (const charId of charsToSummarize) {
-                              const summary = await summarizeYesterdayTags(charId, messagesMap[charId]);
-                              if (summary && summary !== "ไม่มีเหตุการณ์พิเศษ") {
-                                  newYesterdayTags[charId] = summary;
-                              }
-                          }
-                          console.log("[Daily Reset] Summaries created:", newYesterdayTags);
-                      }
-                  } catch (e) {
-                      console.error("Failed to generate yesterday summaries:", e);
-                  }
+                  // 1. Snapshot current messages for archiving and summarization
+                  const messagesSnapshot = { ...messagesMap };
 
-                  // --- SAVE DAILY CHAT ARCHIVES (30 DAYS HISTORY) ---
-                  const currentArchives = currentStore.dailyChatArchives || {};
-                  const updatedArchives: Record<string, DailyChatLog[]> = { ...currentArchives };
-                  const archiveDateStr = new Date().toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' });
-
-                  targetChars.forEach(charId => {
-                      const activeMsgs = messagesMap[charId];
-                      if (activeMsgs && activeMsgs.length > 0) {
-                          const charArchive = updatedArchives[charId] ? [...updatedArchives[charId]] : [];
-                          const newLog: DailyChatLog = {
-                              id: `log_${charId}_${Date.now()}`,
-                              date: archiveDateStr,
-                              messages: [...activeMsgs],
-                              summary: newYesterdayTags[charId] || undefined,
-                              totalMessages: activeMsgs.length
-                          };
-                          charArchive.unshift(newLog);
-                          updatedArchives[charId] = charArchive.slice(0, 30); // Keep max 30 days
-                      }
-                  });
-
-                  // 1. UPDATE LOCAL STATE IMMEDIATELY (Visual feedback first)
-                  setMessagesMap(prev => ({ ...prev, ...emptyMessages }));
-                  
-                  // 2. PRUNE MEMORIES
-                  const currentMemories = currentStore.memories;
-                  const cleanedMemories = { ...currentMemories };
-                  
-                  targetChars.forEach(charId => {
-                      if (cleanedMemories[charId]) {
-                          cleanedMemories[charId] = pruneMemories(cleanedMemories[charId]);
-                      }
-                  });
-                  
-                  // 3. UPDATE STORE STATE (Optimistic)
+                  // 2. CLEAR LOCAL MESSAGES & STAMP RESET DATE IMMEDIATELY (Eliminates Race Conditions)
+                  setMessagesMap(emptyMessages);
                   setGameState({ 
                       lastChatResetDate: todayStr,
-                      memories: cleanedMemories,
-                      yesterdayMemoryTags: newYesterdayTags,
-                      dailyChatArchives: updatedArchives
+                      currentDateScene: null // Auto-end any active date mode when new day starts at 06:00
                   });
 
-                  // 4. SYNC TO FIREBASE (Background)
-                  try {
-                      await saveMessages(user.uid, emptyMessages as any);
-                      console.log("✅ [Daily Reset] Cloud sync complete.");
-                  } catch (e) {
+                  // 3. SYNC TO FIREBASE IMMEDIATELY
+                  saveMessages(user.uid, emptyMessages as any).catch(e => {
                       console.error("❌ Daily Reset: Failed to save cleared messages.", e);
-                  }
+                  });
+
+                  // 4. BACKGROUND SUMMARIZATION & ARCHIVING
+                  (async () => {
+                      const newYesterdayTags: Record<string, string> = {};
+                      try {
+                          const { summarizeYesterdayTags } = await import('./services/mockAi');
+                          const charsToSummarize = targetChars.filter(c => messagesSnapshot[c] && messagesSnapshot[c].length > 0);
+                          
+                          if (charsToSummarize.length > 0) {
+                              console.log(`[Daily Reset] Summarizing yesterday's events for ${charsToSummarize.length} characters...`);
+                              for (const charId of charsToSummarize) {
+                                  const summary = await summarizeYesterdayTags(charId, messagesSnapshot[charId]);
+                                  if (summary && summary !== "ไม่มีเหตุการณ์พิเศษ") {
+                                      newYesterdayTags[charId] = summary;
+                                  }
+                              }
+                              console.log("[Daily Reset] Summaries created:", newYesterdayTags);
+                          }
+                      } catch (e) {
+                          console.error("Failed to generate yesterday summaries:", e);
+                      }
+
+                      // SAVE DAILY CHAT ARCHIVES (30 DAYS HISTORY)
+                      const storeNow = useGameStore.getState();
+                      const currentArchives = storeNow.dailyChatArchives || {};
+                      const updatedArchives: Record<string, DailyChatLog[]> = { ...currentArchives };
+                      const archiveDateStr = new Date().toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' });
+
+                      targetChars.forEach(charId => {
+                          const activeMsgs = messagesSnapshot[charId];
+                          if (activeMsgs && activeMsgs.length > 0) {
+                              const charArchive = updatedArchives[charId] ? [...updatedArchives[charId]] : [];
+                              const newLog: DailyChatLog = {
+                                  id: `log_${charId}_${Date.now()}`,
+                                  date: archiveDateStr,
+                                  messages: [...activeMsgs],
+                                  summary: newYesterdayTags[charId] || undefined,
+                                  totalMessages: activeMsgs.length
+                              };
+                              charArchive.unshift(newLog);
+                              updatedArchives[charId] = charArchive.slice(0, 30); // Keep max 30 days
+                          }
+                      });
+
+                      // PRUNE MEMORIES
+                      const currentMemories = storeNow.memories;
+                      const cleanedMemories = { ...currentMemories };
+                      targetChars.forEach(charId => {
+                          if (cleanedMemories[charId]) {
+                              cleanedMemories[charId] = pruneMemories(cleanedMemories[charId]);
+                          }
+                      });
+
+                      setGameState({ 
+                          memories: cleanedMemories,
+                          yesterdayMemoryTags: newYesterdayTags,
+                          dailyChatArchives: updatedArchives
+                      });
+
+                      isResettingRef.current = false;
+                  })().catch(err => {
+                      console.warn("Background daily reset tasks warning:", err);
+                      isResettingRef.current = false;
+                  });
 
                   triggerNotification('New Day Started', 'Chat history cleared & Memories optimized! ☀️', [], 'info', <RefreshCw size={20} className="text-blue-400" />);
               }
@@ -408,7 +416,7 @@ export const App: React.FC = () => {
       checkDailyReset();
       const interval = setInterval(checkDailyReset, 30000); // Check every 30s
       return () => clearInterval(interval);
-  }, [user, isDataLoaded, setGameState, setMessagesMap]);
+  }, [user, isDataLoaded, setGameState, setMessagesMap, messagesMap]);
 
   useEffect(() => {
       if (currentView !== 'social_chat') setActiveSocialChat(null);
@@ -807,6 +815,7 @@ export const App: React.FC = () => {
           isLoadingProfile={isLoadingProfile} authLoading={authLoading}
           onCollectQuestReward={handleCollectQuestReward} // NEW
           onSelectQuestOption={handleSelectQuestOption} // NEW
+          onCloseQuestChoice={handleCloseQuestChoice}
       />
 
       {showInventory && (
@@ -818,7 +827,7 @@ export const App: React.FC = () => {
       )}
 
       {/* --- NEW: PHONE OVERLAY SYSTEM --- */}
-      <PhoneOverlay 
+      <PhoneOverlay onStoryTravel={id => { if (isTraveling || gameState.activeTask || gameState.isSleeping || gameState.voiceChat?.isActive) return; useGameStore.getState().togglePhone(); setActiveSocialChat(null); setRoomGuestId(null); if (id === gameState.currentLocation) { setCurrentView('location'); setLocationMode('chat'); } else handleTravel(id, true); }} 
           globalMusic={globalMusic} 
           onPlayGlobalMusic={() => setGlobalMusic(prev => ({...prev, isPlaying: true}))} 
           onPauseGlobalMusic={() => setGlobalMusic(prev => ({...prev, isPlaying: false}))} 

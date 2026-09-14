@@ -3,10 +3,11 @@ import { AnimatePresence, motion } from 'motion/react';
 import React, { lazy, Suspense, useState, useEffect } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { useGameStore } from '../../store/gameStore';
-import { X, Wifi, Battery, Signal, Camera, MessageSquare, Mail, Wallet, Settings, Cloud, Calendar as CalendarIcon, Music, Map as MapIcon, Compass, Phone, Aperture, Play, Pause, SkipForward, Crown } from 'lucide-react';
+import { BookOpen, X, Wifi, Battery, Signal, Camera, MessageSquare, Mail, Wallet, Settings, Cloud, Calendar as CalendarIcon, Music, Map as MapIcon, Compass, Phone, Aperture, Play, Pause, SkipForward, Crown } from 'lucide-react';
 import { BASEMENT_TRACKS } from '../../constants';
 import { useUIStore } from '../../store/uiStore';
 
+const StoryJournalApp = lazy(() => import('./apps/StoryJournalApp').then(module => ({ default: module.StoryJournalApp })));
 const AiGramApp = lazy(() => import('./apps/AiGramApp').then(module => ({ default: module.AiGramApp })));
 const MailApp = lazy(() => import('./apps/MailApp').then(module => ({ default: module.MailApp })));
 const WalletApp = lazy(() => import('./apps/WalletApp').then(module => ({ default: module.WalletApp })));
@@ -157,6 +158,7 @@ const DailyRewardWidget: React.FC = () => {
 // --- MAIN COMPONENT ---
 
 interface PhoneOverlayProps {
+    onStoryTravel?: (location: import('../../types').LocationId) => void;
     globalMusic?: { isPlaying: boolean, trackIndex: number, volume: number };
     onPlayGlobalMusic?: () => void;
     onPauseGlobalMusic?: () => void;
@@ -165,7 +167,7 @@ interface PhoneOverlayProps {
 }
 
 export const PhoneOverlay: React.FC<PhoneOverlayProps> = ({ 
-    globalMusic, onPlayGlobalMusic, onPauseGlobalMusic, onNextGlobalTrack, userProfile
+    globalMusic, onPlayGlobalMusic, onPauseGlobalMusic, onNextGlobalTrack, userProfile, onStoryTravel
 }) => {
     const { isPhoneOpen, togglePhone, activePhoneApp, unreadSocialPosts, mails, unlockedSkills, isVip, vipDailyClaimed } = useGameStore(useShallow(state => ({
         isPhoneOpen: state.isPhoneOpen,
@@ -183,7 +185,8 @@ export const PhoneOverlay: React.FC<PhoneOverlayProps> = ({
     const [renderState, setRenderState] = useState<'hidden' | 'pre-open' | 'open' | 'closing'>('hidden');
     
     // APP NAVIGATION STATE
-    const [currentApp, setCurrentApp] = useState<'home' | 'aigram' | 'mail' | 'wallet'>('home'); // Added 'mail', 'wallet'
+    const storyUnread = useGameStore(state => Math.max(0, Object.keys(state.story?.receipts || {}).length - (state.story?.journalReadCount || 0)));
+    const [currentApp, setCurrentApp] = useState<'home' | 'aigram' | 'mail' | 'wallet' | 'story'>('home'); // Added 'mail', 'wallet'
 
     // Handle external app switch command
     useEffect(() => {
@@ -293,8 +296,10 @@ export const PhoneOverlay: React.FC<PhoneOverlayProps> = ({
                     )}
 
                     {/* --- HOME SCREEN CONTENT (Conditional) --- */}
+                    {currentApp === 'story' && <motion.div key="story" initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} transition={{ type: 'spring', bounce: 0, duration: 0.3 }} className="absolute inset-0 z-50"><Suspense fallback={<div className="absolute inset-0 bg-slate-50 dark:bg-slate-950 flex items-center justify-center text-slate-500">กำลังเปิดสมุดเรื่องราว…</div>}><StoryJournalApp onClose={goHome} onTravel={onStoryTravel} /></Suspense></motion.div>}
                     {currentApp === 'home' && (
                         <motion.div key="home" initial={{ scale: 1.05, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 1.05, opacity: 0 }} transition={{ type: 'spring', bounce: 0, duration: 0.3 }} className="absolute inset-0 z-10 flex flex-col">
+
                             {/* --- CONTENT AREA (SCROLLABLE) --- */}
                             <div className="flex-1 overflow-y-auto px-6 pt-[70px] pb-32 relative z-10 custom-scrollbar scrollbar-hide">
                                 
@@ -356,6 +361,7 @@ export const PhoneOverlay: React.FC<PhoneOverlayProps> = ({
 
                                 {/* App Grid */}
                                 <div className="grid grid-cols-4 gap-y-7 gap-x-3">
+                                    <AppIcon label="Notes" icon={<BookOpen size={28} />} bgGradient="bg-gradient-to-br from-pink-500 to-purple-600" notification={storyUnread} onClick={() => setCurrentApp('story')} />
                                     <AppIcon 
                                         label="AiGram" 
                                         icon={<Aperture size={28} />} 

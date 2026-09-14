@@ -1,3 +1,6 @@
+import type { StoryDialogueContext } from './storyDialogue';
+import { validateStoryDialogue } from './storyDialogue';
+import { getStoryPrompt, redactPilotIdentity, guardStoryTurn } from './storyContext';
 
 import { GoogleGenAI, Type, GenerateContentResponse, HarmCategory, HarmBlockThreshold } from "@google/genai";
 import { CharacterId, Mood, RelationshipTier, UserProfile, Message, SimulationResponse, PlayerAttributes, ActiveEvent, Memory, DateScene, CharacterQuest, QuestOption } from "../types";
@@ -466,9 +469,12 @@ const getTimeContext = (charId: string, charData: any, messages: Message[], curr
 };
 
 export const generateResponse = async (
-    userText: string, charId: CharacterId, loveScore: number, currentTier: RelationshipTier, currentMood: Mood, messages: Message[], userProfile: UserProfile | null, hasTrainedVisit: boolean, activeTaskType: string | null, energy: number, stats: PlayerAttributes, isDay: boolean, relationshipTiers: Record<CharacterId, RelationshipTier>, activeEvent: ActiveEvent | null, memories: Memory[], metCharacters: CharacterId[], isNight: boolean, unlockedTracks: string[], partyMemberId: CharacterId | null, partyMemories: Memory[], giftCooldowns: Record<string, number>, drunkTimers: Record<string, number>, extraContext: string = "", equippedStyle: string | null = null, currentDateScene: DateScene | null = null, currentChemistry: number = 0
+    userText: string, charId: CharacterId, loveScore: number, currentTier: RelationshipTier, currentMood: Mood, messages: Message[], userProfile: UserProfile | null, hasTrainedVisit: boolean, activeTaskType: string | null, energy: number, stats: PlayerAttributes, isDay: boolean, relationshipTiers: Record<CharacterId, RelationshipTier>, activeEvent: ActiveEvent | null, memories: Memory[], metCharacters: CharacterId[], isNight: boolean, unlockedTracks: string[], partyMemberId: CharacterId | null, partyMemories: Memory[], giftCooldowns: Record<string, number>, drunkTimers: Record<string, number>, extraContext: string = "", equippedStyle: string | null = null, currentDateScene: DateScene | null = null, currentChemistry: number = 0,
+    partyMemberRecentMessages: Message[] = [],
+    storyDialogue?: StoryDialogueContext
 ): Promise<SimulationResponse> => {
     
+    if (!apiKey && storyDialogue) throw new Error('story_ai_unavailable');
     if (!apiKey) return { reply: "(ระบบ: ไม่พบ API Key)", mood: currentMood, love_change: 0, energy_cost: 0, chemistry_change: 0 };
     const charData = CHARACTER_DATA[charId];
     const currentGameState = useGameStore.getState();
@@ -491,7 +497,22 @@ export const generateResponse = async (
         let socialWeb = getFilteredSocialWeb(charId);
         let memoryContext = getRelevantMemories(memories, userText).text;
         let drunkContext = (drunkTimers[charId] || 0) > Date.now() ? getDrunkContext(charId) : "";
-        let partyContext = partyMemberId ? getPartyContext(charId, partyMemberId) : "";
+        
+        const guestTier = partyMemberId ? (relationshipTiers[partyMemberId] || currentGameState.relationshipTiers?.[partyMemberId] || RelationshipTier.STRANGER) : undefined;
+        const guestLove = partyMemberId ? (currentGameState.loveScores?.[partyMemberId] || 0) : undefined;
+        const guestChem = partyMemberId ? (currentGameState.chemistryScores?.[partyMemberId] || 0) : undefined;
+        const guestMood = partyMemberId ? (currentGameState.currentMoods?.[partyMemberId] || Mood.NEUTRAL) : undefined;
+
+        let partyContext = partyMemberId ? getPartyContext(charId, partyMemberId, {
+            guestTier,
+            guestLoveScore: guestLove,
+            guestChemistry: guestChem,
+            guestMood,
+            guestMemories: partyMemories,
+            guestRecentMessages: partyMemberRecentMessages,
+            userProfile,
+            userText
+        }) : "";
         let dailyThemeContext = getDailyThemeContext(charId, currentDailyThemeId, currentChemistry, isRareVibe);
         let deepPsychologyContext = getDeepPsychologyContext(charId, currentChemistry, currentTier);
         let relationshipBehavior = getRelationshipBehavior(charId, currentTier);
@@ -655,13 +676,16 @@ export const generateResponse = async (
 
         [MULTI-CHARACTER SCRIPTING (PARTY MODE)]
         ${partyMemberId ? `
-        **STATUS:** A GUEST is present!
-        **INSTRUCTION:** You are generating a script involving [${charData.name}] (You/Host) and [${CHARACTER_DATA[partyMemberId].name}] (Guest).
+        **STATUS:** A GUEST is present! [${CHARACTER_DATA[partyMemberId].name}] has joined the session with User.
+        **INSTRUCTION:** You are generating a script involving [${charData.name}] (Host) and [${CHARACTER_DATA[partyMemberId].name}] (Guest).
+        **CRITICAL RELATIONSHIP & MEMORY CONTINUITY:**
+        - [${CHARACTER_DATA[partyMemberId].name}] MUST strictly preserve their exact relationship bond, intimacy level, emotional tone, and memories with the User (as detailed in [PARTY INTERACTION MODE]). If they are lovers/partners (แฟน), they MUST act like loving partners!
+        - [${charData.name}] (Host) naturally acknowledges their bond (e.g. welcoming both, teasing them as a couple, commenting on their vibe).
         **OUTPUT:** Use the \`replies\` array field.
-        - Entry 1: Host (${charData.name}) speaks first.
-        - Entry 2: Guest (${CHARACTER_DATA[partyMemberId].name}) responds or interrupts.
-        - Entry 3: Host might respond again (Optional).
-        **ROLEPLAYING:** You must simulate the Guest's personality based on the context provided in [PARTY INTERACTION MODE].
+        - Entry 1: Host (${charData.name}) or Guest speaks.
+        - Entry 2: The other character responds, reacts, or addresses User.
+        - Entry 3+: Lively multi-character banter between User, Host, and Guest.
+        **ROLEPLAYING:** You must faithfully simulate the Guest's personality and voice based on the context provided in [PARTY INTERACTION MODE].
         ` : `STATUS: Solo conversation. You can use either \`reply\` or \`replies\` (for burst messaging).`}
 
         [MEMORY PROTOCOL - DUAL PERSPECTIVE]
@@ -720,7 +744,7 @@ export const generateResponse = async (
                         model: modelName,
                         contents: finalInputText,
                         config: {
-                            systemInstruction: systemPrompt,
+                            systemInstruction: redactPilotIdentity(systemPrompt) + getStoryPrompt(storyDialogue?.progress || currentGameState.story, charId) + (storyDialogue?.instruction || ''),
                             responseMimeType: "application/json",
                             maxOutputTokens: 8192, // Generous token ceiling for thinking + full Thai JSON response
                             thinkingConfig: { thinkingBudget: getThinkingBudget() }, 
@@ -815,6 +839,7 @@ export const generateResponse = async (
         }
 
         if (!parsedJson) {
+            if (storyDialogue) throw new Error('story_ai_unavailable');
             console.error("❌ All AI attempts failed.");
             return { 
                 reply: `(หันมายิ้มให้คุณอย่างอ่อนโยน) ...เอ๊ะ เมื่อกี้เหมือนมีอะไรสะดุดไปนิดนึง ขอโทษทีนะ คุณว่าไงนะ?`, 
@@ -832,13 +857,19 @@ export const generateResponse = async (
             partyMemberId
         });
 
+        if (storyDialogue) {
+            const reply = validateStoryDialogue(sanitizedTurn, storyDialogue);
+            return { reply, mood: sanitizedTurn.mood, love_change: 0, chemistry_change: 0, energy_cost: 0 };
+        }
+
         if (sanitizedTurn.thought) {
             console.log(`%c🧠 [${charData.name}'s Inner Thought]: ${sanitizedTurn.thought}`, 'color: #06b6d4; font-weight: bold; font-style: italic;');
         }
 
-        return sanitizedTurn;
+        return guardStoryTurn(sanitizedTurn, currentGameState.story, charId);
 
     } catch (error) {
+        if (storyDialogue) throw error;
         console.error("AI Critical Error:", error);
         return { reply: "...", mood: Mood.NEUTRAL, love_change: 0, energy_cost: 0, chemistry_change: 0 };
     }

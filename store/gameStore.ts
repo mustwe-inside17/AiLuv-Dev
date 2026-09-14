@@ -1,4 +1,6 @@
 
+import { emptyStoryProgress, migrateStoryProgress, applyStoryCommand } from '../domain/story/storyEngine';
+import type { StoryCommand, StoryResult } from '../domain/story/types';
 import { create } from 'zustand';
 import { GameState, LocationId, CharacterId, ShopItem, PlayerAttributes, Mood, RelationshipTier, ActiveTask, ActiveEvent, DateScene, SecretUnlockData, PendingQuestReward, ActiveQuestChoiceSession, MailItem, MailAction } from '../types';
 import { INITIAL_GAME_STATE, TRAVEL_COST, LOCATIONS, TIER_THRESHOLDS, DAILY_LOGIN_REWARDS } from '../constants';
@@ -9,6 +11,9 @@ import { getRandomStockNews } from '../constants/stockNews';
 
 // --- ACTIONS INTERFACE ---
 interface GameActions {
+    previewStoryAction: (command: StoryCommand, charId: CharacterId) => StoryResult;
+    performStoryAction: (command: StoryCommand, charId: CharacterId, source?: 'chat' | 'button') => StoryResult;
+    markStoryJournalRead: () => void;
     // Core setters
     setGameState: (state: Partial<GameState>) => void;
     replaceGameState: (state: GameState) => void;
@@ -80,9 +85,9 @@ interface GameActions {
 
     // NEW: PHONE SYSTEM STATE
     isPhoneOpen: boolean;
-    activePhoneApp?: 'home' | 'aigram' | 'mail' | 'wallet' | null;
+    activePhoneApp?: 'home' | 'aigram' | 'mail' | 'wallet' | 'story' | null;
     togglePhone: () => void;
-    openPhone: (app?: 'home' | 'aigram' | 'mail' | 'wallet') => void;
+    openPhone: (app?: 'home' | 'aigram' | 'mail' | 'wallet' | 'story') => void;
 
     // NEW: MAIL SYSTEM ACTIONS
     addMail: (mail: MailItem) => void;
@@ -107,6 +112,24 @@ interface GameActions {
 // --- STORE DEFINITION ---
 export const useGameStore = create<GameState & GameActions>((set, get) => ({
     ...INITIAL_GAME_STATE,
+    story: emptyStoryProgress(),
+    markStoryJournalRead: () => set(state => ({ story: { ...(state.story || emptyStoryProgress()), journalReadCount: Object.keys(state.story?.receipts || {}).length } })),
+    previewStoryAction: (command, charId) => {
+        const state = get();
+        const result = applyStoryCommand(state.story || emptyStoryProgress(), command, {
+            characterId: charId, locationId: state.currentLocation, love: state.loveScores[charId] || 0,
+            busy: !!(state.voiceChat?.isActive || state.currentDateScene || state.activeTask || state.activeEvent || state.isSleeping || state.isGameOver || LOCATIONS[state.currentLocation]?.characterId !== charId)
+        }, Date.now());
+        return result;
+    },
+    performStoryAction: (command, charId, source = 'button') => {
+        const result = get().previewStoryAction(command, charId);
+        if (result.status === 'completed') {
+            result.progress.receipts[result.node!.id].source = source;
+            set({ story: result.progress });
+        }
+        return result;
+    },
     // Ensure settings exist even if initial state doesn't have them yet (migration)
     settings: INITIAL_GAME_STATE.settings || { bgmVolume: 0.2, sfxVolume: 0.8, isMuted: false, isEcoMode: false },
     isMusicActive: false, // Default false
@@ -122,6 +145,8 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
     isPhoneOpen: false, // Default Closed
     unreadSocialPosts: 4, // Default
     mails: INITIAL_GAME_STATE.mails || [], // Ensure mails exist
+    hasReceivedStarterMails: false,
+    lastChemistryDecayTime: Date.now(),
 
     // --- BASIC SETTERS ---
     setGameState: (updates) => {
@@ -138,6 +163,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
         }
         set((state) => ({
             ...newState,
+            story: migrateStoryProgress(newState.story),
             // Safety check for settings migration
             settings: newState.settings || { bgmVolume: 0.2, sfxVolume: 0.8, isMuted: false, isEcoMode: false },
             dailyLogin: newState.dailyLogin || { currentDay: 1, lastClaimDate: '' },
@@ -153,6 +179,8 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
             isPhoneOpen: false, // Reset phone on load
             unreadSocialPosts: newState.unreadSocialPosts !== undefined ? newState.unreadSocialPosts : 4, // Default if missing
             mails: newState.mails || [], // Default empty mail
+            hasReceivedStarterMails: newState.hasReceivedStarterMails || false,
+            lastChemistryDecayTime: newState.lastChemistryDecayTime || Date.now(),
             voiceChat: newState.voiceChat || { isActive: false, characterId: null as any, tokenUsage: 0, isMicMuted: false }
         }));
     },

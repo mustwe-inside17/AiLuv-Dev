@@ -1,0 +1,284 @@
+
+<!DOCTYPE html>
+<html lang="th">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content" />
+    
+    <!-- PWA Settings -->
+    <link rel="manifest" href="/manifest.json">
+    <!-- Dynamic theme color handled by JS, default to dark for safety -->
+    <meta name="theme-color" content="#020617">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="AiLuv">
+    
+    <!-- App Icon -->
+    <link rel="apple-touch-icon" href="/images/icon.png">
+    <link rel="icon" type="image/png" href="/images/icon.png">
+
+    <!-- Display + Thai body fonts -->
+    
+    
+    
+
+    <title>AiLuv Project</title>
+    <link rel="stylesheet" href="/tests/ui/generated.css"><link rel="stylesheet" href="/tests/ui/fonts.css">
+    <style>
+      /* iOS Safe Area Utilities */
+      .pb-safe {
+        padding-bottom: env(safe-area-inset-bottom);
+      }
+      .pt-safe {
+        padding-top: env(safe-area-inset-top);
+      }
+      .h-safe-screen {
+        height: 100vh; /* Fallback */
+        height: 100dvh;
+      }
+
+      /* Custom scrollbar - Adaptive */
+      ::-webkit-scrollbar {
+        width: 4px;
+      }
+      /* Light Mode Scrollbar */
+      ::-webkit-scrollbar-track {
+        background: #f1f5f9; 
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #cbd5e1; 
+        border-radius: 10px;
+      }
+      /* Dark Mode Scrollbar */
+      .dark ::-webkit-scrollbar-track {
+        background: #020617;
+      }
+      .dark ::-webkit-scrollbar-thumb {
+        background: #334155;
+      }
+      
+      ::-webkit-scrollbar-thumb:hover {
+        background: #ec4899; /* pink-500 on hover */
+      }
+
+      /* Character Animations */
+      @keyframes wiggle {
+        0%, 100% { transform: rotate(-3deg); }
+        50% { transform: rotate(3deg); }
+      }
+      
+      @keyframes bounce-soft {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-10px) scale(1.02); }
+      }
+
+      @keyframes shake-hard {
+        0%, 100% { transform: translateX(0); }
+        25% { transform: translateX(-5px) rotate(-5deg); }
+        75% { transform: translateX(5px) rotate(5deg); }
+      }
+
+      @keyframes float-up {
+        0% { opacity: 1; transform: translateY(0) scale(0.5); }
+        100% { opacity: 0; transform: translateY(-80px) scale(1.5); }
+      }
+
+      /* UI Feedback Animations */
+      @keyframes pop-text {
+        0% { opacity: 0; transform: translateY(0) scale(0.5); }
+        20% { opacity: 1; transform: translateY(-10px) scale(1.2); }
+        100% { opacity: 0; transform: translateY(-40px) scale(1); }
+      }
+
+      @keyframes float-love {
+        0% { opacity: 0; transform: translateY(20px) scale(0.5); }
+        15% { opacity: 1; transform: translateY(0) scale(1.2); }
+        70% { opacity: 1; transform: translateY(-30px) scale(1); } 
+        100% { opacity: 0; transform: translateY(-50px) scale(0.9); }
+      }
+
+      @keyframes level-up-pulse {
+        0% { box-shadow: 0 0 0 0 rgba(236, 72, 153, 0.4); }
+        70% { box-shadow: 0 0 0 10px rgba(236, 72, 153, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(236, 72, 153, 0); }
+      }
+
+      @keyframes confetti-fall {
+        0% { transform: translateY(-20px) rotate(0deg); opacity: 1; }
+        100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+      }
+
+      @keyframes toast-slide-in {
+        0% { transform: translateY(-100%) scale(0.9); opacity: 0; }
+        60% { transform: translateY(10%) scale(1.05); opacity: 1; }
+        100% { transform: translateY(0) scale(1); opacity: 1; }
+      }
+
+      @keyframes toast-slide-out {
+        0% { transform: scale(1); opacity: 1; }
+        100% { transform: scale(0.9) translateY(-20px); opacity: 0; }
+      }
+
+      /* Night Mode Stars */
+      @keyframes twinkle {
+        0%, 100% { opacity: 0.2; transform: scale(0.8); }
+        50% { opacity: 1; transform: scale(1.2); }
+      }
+      .star {
+        position: absolute;
+        width: 2px;
+        height: 2px;
+        background: white;
+        border-radius: 50%;
+        animation: twinkle 3s infinite ease-in-out;
+      }
+
+      /* Ambient Aurora Animation */
+      @keyframes aurora-shift {
+        0% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+        100% { background-position: 0% 50%; }
+      }
+
+      .animate-blob {
+        animation: blob 7s infinite;
+      }
+      .animation-delay-2000 {
+        animation-delay: 2s;
+      }
+      .animation-delay-4000 {
+        animation-delay: 4s;
+      }
+
+      @keyframes gradient-move {
+          0% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+          100% { background-position: 0% 50%; }
+      }
+      .animate-gradient-move {
+          background-size: 200% 200%;
+          animation: gradient-move 10s ease infinite;
+      }
+
+      /* LUMA-STYLE LAUNCH ANIMATIONS */
+      @keyframes luma-portal-out {
+        0% { transform: scale(1); opacity: 1; filter: blur(0px); }
+        40% { transform: scale(0.9); opacity: 1; filter: blur(0px); }
+        100% { transform: scale(1.8); opacity: 0; filter: blur(10px); }
+      }
+      
+      @keyframes app-entry-zoom {
+        0% { transform: scale(0.92); opacity: 0; }
+        100% { transform: scale(1); opacity: 1; }
+      }
+
+      .animate-luma-out {
+        animation: luma-portal-out 0.8s cubic-bezier(0.7, 0, 0.3, 1) forwards;
+      }
+
+      .animate-app-enter {
+        animation: app-entry-zoom 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+      }
+
+      @keyframes magical-shine {
+        0% { transform: translateX(-150%) skewX(-15deg); }
+        20%, 100% { transform: translateX(250%) skewX(-15deg); }
+      }
+      .animate-magical-shine {
+        animation: magical-shine 4s infinite ease-in-out;
+      }
+
+      .animate-wiggle { animation: wiggle 0.3s ease-in-out infinite; }
+      .animate-bounce-soft { animation: bounce-soft 0.5s ease-in-out; }
+      .animate-shake-hard { animation: shake-hard 0.4s ease-in-out; }
+      .animate-float-up { animation: float-up 1.5s ease-out forwards; }
+      .animate-pop-text { animation: pop-text 0.8s ease-out forwards; }
+      .animate-float-love { animation: float-love 2.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; } 
+      .animate-level-pulse { animation: level-up-pulse 1s infinite; }
+      .animate-toast-in { animation: toast-slide-in 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+      .animate-toast-out { animation: toast-slide-out 0.3s ease-in forwards; }
+      
+      .confetti-piece {
+        position: absolute;
+        width: 8px;
+        height: 8px;
+        background: #ffd700;
+        animation: confetti-fall 2.5s ease-out forwards;
+      }
+
+      /* --- ECO MODE OVERRIDES --- */
+      .eco-mode .backdrop-blur-xl,
+      .eco-mode .backdrop-blur-md,
+      .eco-mode .backdrop-blur-sm,
+      .eco-mode .backdrop-blur,
+      .eco-mode .backdrop-blur-[2px] {
+          backdrop-filter: none !important;
+          -webkit-backdrop-filter: none !important;
+          background-color: rgba(15, 23, 42, 0.95) !important; 
+      }
+      .eco-mode .animate-gradient-move,
+      .eco-mode .animate-blob,
+      .eco-mode .animate-pulse {
+          animation: none !important;
+      }
+      .eco-mode .confetti-piece, 
+      .eco-mode .animate-fall,
+      .eco-mode .animate-confetti-explode {
+          display: none !important;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after {
+          scroll-behavior: auto !important;
+          animation-duration: 0.01ms !important;
+          animation-iteration-count: 1 !important;
+          transition-duration: 0.01ms !important;
+        }
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.554.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.30.0",
+    "firebase/app": "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js",
+    "firebase/auth": "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js",
+    "firebase/firestore": "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js",
+    "firebase/storage": "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js",
+    "firebase/analytics": "https://www.gstatic.com/firebasejs/10.12.0/firebase-analytics.js",
+    "firebase/": "https://aistudiocdn.com/firebase@^12.6.0/",
+    "vite": "https://esm.sh/vite@^7.3.0",
+    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.2",
+    "zustand": "https://esm.sh/zustand@4.5.0?external=react",
+    "react-dom": "https://esm.sh/react-dom@^19.2.3"
+  }
+}
+</script>
+</head>
+  <body class="h-safe-screen overflow-hidden selection:bg-rose-500 selection:text-white overscroll-none font-sans transition-colors duration-300">
+    <div id="root"></div>
+    <script>
+      const isPreview = window.location.hostname.includes('googleusercontent') || 
+                       window.location.hostname.includes('webcontainer') ||
+                       window.location.hostname.includes('ai.studio') ||
+                       window.location.hostname.includes('github.dev');
+      
+      console.log('🔍 PWA Check:', { isPreview, hostname: window.location.hostname });
+
+      if ('serviceWorker' in navigator && !isPreview) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js', { scope: '/' })
+            .then(reg => console.log('SW registered'))
+            .catch(err => {
+                console.warn('SW registration skipped:', err.message);
+            });
+        });
+      }
+    </script>
+  <script type="module" src="/tests/ui/story-ui.tsx"></script>
+</body>
+</html>

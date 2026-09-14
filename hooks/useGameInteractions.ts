@@ -1,3 +1,6 @@
+import { useStoryInteraction } from './useStoryInteraction';
+import { emptyStoryProgress } from '../domain/story/storyEngine';
+import { routeStoryInput } from '../domain/story/storyRouter';
 
 import React, { useState, useRef } from 'react';
 import { useShallow } from 'zustand/react/shallow';
@@ -94,6 +97,7 @@ export const useGameInteractions = ({
 }: UseGameInteractionsProps) => {
     
     const [isTyping, setIsTyping] = useState(false);
+    const storyInteraction = useStoryInteraction({ messagesMap, setMessagesMap, userProfile, setIsTyping });
     const [lastAction, setLastAction] = useState<{ type: ActionType, timestamp: number } | null>(null);
     const [consumptionResult, setConsumptionResult] = useState<{ item: ShopItem, energyGained: number, buffsGained?: any, statGained?: any, styleItem?: any } | null>(null);
     const questRequestRef = useRef<string | null>(null);
@@ -714,13 +718,14 @@ export const useGameInteractions = ({
                     false, 
                     gameState.unlockedTracks,
                     gameState.partyMember,
-                    [], 
+                    gameState.partyMember ? (gameState.memories[gameState.partyMember] || []) : [], 
                     gameState.giftCooldowns,
                     gameState.drunkTimers,
                     "", 
                     gameState.equippedStyle,
                     gameState.currentDateScene,
-                    gameState.chemistryScores?.[charId] || 0
+                    gameState.chemistryScores?.[charId] || 0,
+                    gameState.partyMember ? (messagesMap[gameState.partyMember] || []).slice(-5) : []
                 );
             }
 
@@ -851,6 +856,20 @@ export const useGameInteractions = ({
                 updates.loveScores = { ...gameState.loveScores, [charId]: potentialNewScore };
                 updates.lastLoveUpdate = { charId, value: finalScore, isCritical, timestamp: Date.now() };
 
+                // Party Member Companion Affinity Boost
+                if (gameState.partyMember && finalScore > 0) {
+                    const pId = gameState.partyMember;
+                    const pCurrentLove = gameState.loveScores[pId] || 0;
+                    const pBonus = Math.max(1, Math.min(5, Math.round(finalScore * 0.4)));
+                    const pTier = gameState.relationshipTiers[pId] || RelationshipTier.STRANGER;
+                    let potentialPLove = pCurrentLove + pBonus;
+                    const { isLocked: pLocked, nextThreshold: pThreshold } = getTierInfo(pTier, potentialPLove);
+                    if (pLocked) {
+                        potentialPLove = pThreshold - 1;
+                    }
+                    updates.loveScores = { ...updates.loveScores, [pId]: potentialPLove };
+                }
+
                 // --- MARCUS FIX: AUTO TIER PROMOTION (EARLY GAME) ---
                 // Stranger -> Acquaintance -> Friend happens automatically based on score.
                 // Higher tiers (Flirting/Partner/etc) are locked by Items via ChatActionMenu.
@@ -878,6 +897,13 @@ export const useGameInteractions = ({
                 newChem = Math.max(0, Math.min(100, newChem)); 
                 
                 updates.chemistryScores = { ...gameState.chemistryScores, [charId]: newChem };
+
+                if (gameState.partyMember && simResponse.chemistry_change > 0) {
+                    const pId = gameState.partyMember;
+                    const pChem = gameState.chemistryScores?.[pId] || 0;
+                    const newPChem = Math.min(100, pChem + Math.ceil(simResponse.chemistry_change * 0.5));
+                    updates.chemistryScores = { ...updates.chemistryScores, [pId]: newPChem };
+                }
             }
 
             if (!suppressProgressionEffects && simResponse.energy_cost > 0) {
@@ -962,13 +988,21 @@ export const useGameInteractions = ({
                         type: sceneTarget as SceneType,
                         name: sceneName,
                         narrativeStatus: dynamicStatus,
-                        bgImage: bgImg
+                        bgImage: bgImg,
+                        startedAt: gameState.currentDateScene?.startedAt || Date.now(),
+                        lastInteractionAt: Date.now()
                     };
 
                     if (!gameState.currentDateScene) {
                         triggerNotification('Moment Started', `เข้าสู่โหมด: ${sceneName}`, [], 'success');
                     }
                 }
+            } else if (gameState.currentDateScene) {
+                // Keep date scene alive and refresh lastInteractionAt on each conversation interaction
+                updates.currentDateScene = {
+                    ...gameState.currentDateScene,
+                    lastInteractionAt: Date.now()
+                };
             }
 
             // --- [MARCUS FIX] SECRET UNLOCK LOGIC ---
@@ -1043,6 +1077,19 @@ export const useGameInteractions = ({
         const charId = socialChatId || guestId || (LOCATIONS[gameState.currentLocation]?.characterId as CharacterId);
         
         if (!charId) return;
+        if (isTyping || storyInteraction.busy.current) return;
+        if (text.startsWith('@story-retry:')) {
+            const message = messagesMap[charId]?.find(m => m.id === text.slice(13));
+            if (message?.storyInteraction && message.storyInteraction.status !== 'complete') void storyInteraction.run(message.storyInteraction.command, charId, undefined, message.id);
+            return;
+        }
+        const storyRoute = routeStoryInput(text, gameState.story || emptyStoryProgress(), {
+            characterId: charId, locationId: gameState.currentLocation, love: gameState.loveScores[charId] || 0
+        });
+        if (storyRoute.handled) {
+            if (storyRoute.command) void storyInteraction.run(storyRoute.command, charId, storyRoute.playerText);
+            return;
+        }
 
         const CHAT_COST = 5; 
         const hasChatterbox = gameState.activeBuffs.some(b => b.type === 'chatterbox');

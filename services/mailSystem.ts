@@ -80,17 +80,37 @@ export function deliverMail(mail: MailItem, options: { showToast?: boolean; play
 }
 
 /**
- * Check and ensure starter mails exist
+ * Check and ensure starter mails exist (Delivered only once per citizen lifetime)
  */
 export function checkAndDeliverStarterMails(): void {
     const store = useGameStore.getState();
+
+    // If the player has already received starter mails in their lifetime, never deliver again
+    if (store.hasReceivedStarterMails) {
+        return;
+    }
+
     const existingMails = store.mails || [];
+
+    // Check if legacy user already has any welcome starter mail
+    const hasLegacyStarter = existingMails.some(m => 
+        m.id === 'mail_welcome_citizen' || m.id === 'mail_welcome' || m.id === 'mail_city_handbook'
+    );
+
+    if (hasLegacyStarter) {
+        // Stamp flag so it never checks again
+        store.setGameState({ hasReceivedStarterMails: true });
+        return;
+    }
 
     STARTER_MAILS.forEach(starter => {
         if (!existingMails.some(m => m.id === starter.id)) {
             deliverMail(starter, { showToast: false, playSound: false });
         }
     });
+
+    // Mark permanently as received
+    store.setGameState({ hasReceivedStarterMails: true });
 }
 
 /**

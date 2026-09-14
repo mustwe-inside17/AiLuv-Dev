@@ -8,7 +8,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "lint": "tsc --noEmit",
-    "test": "esbuild tests/questState.test.ts --bundle --platform=node --format=esm --outfile=/tmp/ailuv-questState.test.mjs && node --test /tmp/ailuv-questState.test.mjs"
+    "test": "node --import tsx --test tests/*.test.ts"
   },
   "dependencies": {
     "@google/genai": "^1.30.0",

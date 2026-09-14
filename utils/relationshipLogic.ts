@@ -1,6 +1,7 @@
 
-import { RelationshipTier } from '../types';
+import { RelationshipTier, DateScene, CharacterId, LocationId } from '../types';
 import { TIER_THRESHOLDS } from '../constants';
+import { LOCATIONS } from '../constants/locations';
 
 export const getTierInfo = (tier: RelationshipTier, score: number) => {
     let nextThreshold = 0;
@@ -113,4 +114,92 @@ export const calculateDecayedChemistry = (currentChem: number, hoursPassed: numb
         chem = Math.max(0, chem - rate);
     }
     return chem;
+};
+
+export const DATE_SCENE_TIMEOUT_MS = 60 * 60 * 1000; // 60 minutes of inactivity
+
+/**
+ * Checks if a Date Scene should expire due to inactivity or missing timestamps.
+ */
+export const isDateSceneExpired = (dateScene: DateScene | null | undefined, currentTime: number = Date.now()): boolean => {
+    if (!dateScene) return false;
+    const lastActive = dateScene.lastInteractionAt || dateScene.startedAt || 0;
+    if (lastActive === 0) return true; // Legacy date scene without timestamp is expired
+    return (currentTime - lastActive) >= DATE_SCENE_TIMEOUT_MS;
+};
+
+export interface ChemistryDecayResult {
+    updatedChemistry: Record<CharacterId, number>;
+    updatedDateScene: DateScene | null;
+    newDecayTimestamp: number;
+    hoursPassed: number;
+    hasChanges: boolean;
+    dateExpired: boolean;
+}
+
+/**
+ * Processes chemistry decay and handles date expiration for game state.
+ */
+export const processGameStateChemistryDecay = (
+    currentChemistry: Record<CharacterId, number> | undefined,
+    currentDateScene: DateScene | null | undefined,
+    currentLocation: LocationId,
+    lastDecayTimestamp: number,
+    currentTime: number = Date.now()
+): ChemistryDecayResult => {
+    const hoursPassed = Math.floor(Math.max(0, currentTime - lastDecayTimestamp) / 3600000);
+    
+    // Check if date scene has expired due to time or inactivity
+    const dateExpired = isDateSceneExpired(currentDateScene, currentTime);
+    const activeDateScene = dateExpired ? null : (currentDateScene || null);
+    
+    const loc = LOCATIONS[currentLocation];
+    const activeDateCharId = activeDateScene && loc ? loc.characterId : null;
+
+    if (!currentChemistry) {
+        return {
+            updatedChemistry: {} as Record<CharacterId, number>,
+            updatedDateScene: activeDateScene,
+            newDecayTimestamp: lastDecayTimestamp + (hoursPassed * 3600000),
+            hoursPassed,
+            hasChanges: dateExpired,
+            dateExpired
+        };
+    }
+
+    if (hoursPassed <= 0) {
+        return {
+            updatedChemistry: currentChemistry,
+            updatedDateScene: activeDateScene,
+            newDecayTimestamp: lastDecayTimestamp,
+            hoursPassed: 0,
+            hasChanges: dateExpired,
+            dateExpired
+        };
+    }
+
+    const newChem: Record<CharacterId, number> = { ...currentChemistry };
+    let chemChanged = false;
+
+    (Object.keys(newChem) as CharacterId[]).forEach(charId => {
+        // Do not decay if character is currently in an ACTIVE, unexpired date scene
+        if (charId === activeDateCharId) return;
+
+        if (newChem[charId] > 0) {
+            const oldVal = newChem[charId];
+            newChem[charId] = calculateDecayedChemistry(oldVal, hoursPassed);
+            if (newChem[charId] !== oldVal) {
+                chemChanged = true;
+            }
+        }
+    });
+
+    return {
+        updatedChemistry: newChem,
+        updatedDateScene: activeDateScene,
+        newDecayTimestamp: lastDecayTimestamp + (hoursPassed * 3600000),
+        hoursPassed,
+        hasChanges: chemChanged || dateExpired,
+        dateExpired
+    };
 };

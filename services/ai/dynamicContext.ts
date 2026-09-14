@@ -1,5 +1,5 @@
 
-import { CharacterId, UserProfile, RelationshipTier, PlayerAttributes, Memory, DateScene } from '../../types';
+import { CharacterId, UserProfile, RelationshipTier, PlayerAttributes, Memory, DateScene, Mood, Message } from '../../types';
 import { CHARACTER_DATA, SHOP_ITEMS, BASEMENT_TRACKS, SECRET_REGISTRY, SECRET_META } from '../../constants';
 import { getThemeData } from '../../constants/themes'; 
 import { FASHION_ITEMS } from '../../constants/fashion';
@@ -340,53 +340,179 @@ export const getChemistryContext = (tier: RelationshipTier, chemistry: number, l
     `;
 };
 
-// [MARCUS NEW]: SMART PARTY CONTEXT
-export const getPartyContext = (hostId: CharacterId, partyMemberId: CharacterId | null): string => {
+// [MARCUS NEW]: SMART PARTY CONTEXT (V2: FULL RELATIONSHIP & CONTINUITY PRESERVATION)
+export interface PartyContextOptions {
+    guestTier?: RelationshipTier;
+    guestLoveScore?: number;
+    guestChemistry?: number;
+    guestMood?: Mood;
+    guestMemories?: Memory[];
+    guestRecentMessages?: Message[];
+    userProfile?: UserProfile | null;
+    userText?: string;
+}
+
+export const getPartyContext = (
+    hostId: CharacterId, 
+    partyMemberId: CharacterId | null,
+    options?: PartyContextOptions
+): string => {
     if (!partyMemberId || hostId === partyMemberId) return "";
     
     const guest = CHARACTER_DATA[partyMemberId];
     const host = CHARACTER_DATA[hostId];
+    if (!guest || !host) return "";
 
-    // DEFINE DYNAMIC PAIRS
-    let pairDynamic = "Normal friends visiting.";
+    // 1. DEFINE CANON DYNAMIC PAIRS (AILUV BIBLE & GLOBAL RELATIONSHIPS)
+    let pairDynamic = "Companions visiting and chatting together.";
     
     if (hostId === 'miguel' && partyMemberId === 'jellie') pairDynamic = "BOSS & FREELANCER. Miguel is terrified of Jellie. Jellie is critical but pays well. Miguel calls Jellie 'Khun Jellie'.";
-    if (hostId === 'jellie' && partyMemberId === 'miguel') pairDynamic = "BOSS & FREELANCER. Jellie treats Miguel like a servant but secretly likes her art. Jellie dominates conversation.";
-    
-    if (hostId === 'marcus' && partyMemberId === 'lucas') pairDynamic = "ESTRANGED BROTHERS. Awkward. Marcus tries to parent Lucas. Lucas mumbles and wants to leave.";
-    if (hostId === 'lucas' && partyMemberId === 'marcus') pairDynamic = "ESTRANGED BROTHERS. Lucas is annoyed Marcus is checking on him. Marcus criticizes the room/cleanliness.";
-    
-    if (hostId === 'peat' && partyMemberId === 'bam') pairDynamic = "SIBLINGS. Peat is over-protective. Bam complains Peat acts like a dad.";
-    if (hostId === 'bam' && partyMemberId === 'peat') pairDynamic = "SIBLINGS. Bam is annoyed Peat followed her. Peat tries to check if Bam is safe/studying.";
+    else if (hostId === 'jellie' && partyMemberId === 'miguel') pairDynamic = "BOSS & FREELANCER. Jellie treats Miguel like a servant but secretly likes her art. Jellie dominates conversation.";
+    else if (hostId === 'marcus' && partyMemberId === 'lucas') pairDynamic = "ESTRANGED BROTHERS. Awkward. Marcus tries to parent Lucas. Lucas mumbles and wants to leave.";
+    else if (hostId === 'lucas' && partyMemberId === 'marcus') pairDynamic = "ESTRANGED BROTHERS. Lucas is annoyed Marcus is checking on him. Marcus criticizes the room/cleanliness.";
+    else if (hostId === 'peat' && partyMemberId === 'bam') pairDynamic = "SIBLINGS. Peat is over-protective. Bam complains Peat acts like a dad.";
+    else if (hostId === 'bam' && partyMemberId === 'peat') pairDynamic = "SIBLINGS. Bam is annoyed Peat followed her. Peat tries to check if Bam is safe/studying.";
+    else if (hostId === 'erin' && partyMemberId === 'fia') pairDynamic = "CHEAT DAY BESTIES. They gossip and talk about food. Very loud and energetic together.";
+    else if (hostId === 'fia' && partyMemberId === 'erin') pairDynamic = "CHEAT DAY BESTIES. Fia pretends to be strict but Erin tempts her to skip workout.";
+    else if (hostId === 'mia' && partyMemberId === 'miguel') pairDynamic = "SECRET SISTERS. Mia (Spy) acts cold to protect Miguel, but eyes are soft. Miguel is confused why Mia is cold.";
+    else if (hostId === 'miguel' && partyMemberId === 'mia') pairDynamic = "SISTERS. Miguel is happy to see Mia but worried she works too hard. Mia acts distant.";
+    else if (hostId === 'soul' && partyMemberId === 'lucas') pairDynamic = "INSOMNIAC CLUB. Both are calm, quiet, and weird. They understand each other without words.";
+    else if (hostId === 'lucas' && partyMemberId === 'soul') pairDynamic = "INSOMNIAC CLUB. Quiet understanding. Lucas sometimes brings stray animals to Soul.";
+    else if (hostId === 'erin' && partyMemberId === 'miguel') pairDynamic = "DJ INFLUENCER & SHY ARTIST. Erin is vibrant and loud; Miguel is timid and easily flustered by Erin's energy, leaning on User for security.";
+    else if (hostId === 'miguel' && partyMemberId === 'erin') pairDynamic = "SHY ARTIST & DJ INFLUENCER. Miguel is nervous around Erin's flashy fame; Erin finds Miguel's cuteness and art fascinating.";
+    else if (hostId === 'marcus' && partyMemberId === 'peat') pairDynamic = "BUSINESS RIVALS. Marcus thinks Peat wasted talent opening a cafe; Peat calmly pities Marcus's endless corporate greed.";
+    else if (hostId === 'peat' && partyMemberId === 'marcus') pairDynamic = "BUSINESS RIVALS. Peat serves Marcus with calm dignity; Marcus acts demanding and corporate.";
+    else if (hostId === 'jellie' && partyMemberId === 'marcus') pairDynamic = "SECRET PARTNERS. Jellie hides her tycoon family name; Marcus protects her secret identity in exchange for high-society prestige.";
+    else if (hostId === 'marcus' && partyMemberId === 'jellie') pairDynamic = "SECRET PARTNERS. Marcus treats Jellie as a fellow business sharp, secretly keeping her father's agents away.";
+    else if (hostId === 'lucas' && partyMemberId === 'erin') pairDynamic = "EX-MUSIC PARTNERS. Deep creative history, unresolved tension, and mutual respect behind cool exteriors.";
+    else if (hostId === 'erin' && partyMemberId === 'lucas') pairDynamic = "EX-MUSIC PARTNERS. Erin playfully tries to melt Lucas's icy reserve; Lucas avoids eye contact and hides behind headphones.";
+    else if (hostId === 'bam' && partyMemberId === 'marcus') pairDynamic = "STUDENT & BENEFACTOR. Bam treats Marcus with great respect; Marcus softens his corporate persona around her.";
+    else if (hostId === 'marcus' && partyMemberId === 'bam') pairDynamic = "BENEFACTOR & STUDENT. Marcus secretly funds Bam's scholarship and offers subtle mentorship.";
+    else if (hostId === 'bam' && partyMemberId === 'lucas') pairDynamic = "SUPERFAN & NYX. Bam is admin of NYX's fanclub but doesn't know Lucas is NYX; Lucas acts awkwardly flattered.";
+    else if (hostId === 'lucas' && partyMemberId === 'bam') pairDynamic = "NYX & SUPERFAN. Lucas tries not to reveal his identity while Bam happily discusses his music.";
+    else if (hostId === 'erin' && partyMemberId === 'jellie') pairDynamic = "FRENEMIES. Erin wears VANDAL on stage; Jellie is critical of Erin's commercial vibe.";
+    else if (hostId === 'jellie' && partyMemberId === 'erin') pairDynamic = "FRENEMIES. Jellie critiques Erin's outfit; Erin laughs it off with charm.";
+    else if (hostId === 'soul' && partyMemberId === 'mia') pairDynamic = "SECRET CRUSH. Soul is secretly a fan of Ikura (Maid); Mia (Day) enjoys teasing him gently.";
+    else if (hostId === 'mia' && partyMemberId === 'soul') pairDynamic = "SECRET CRUSH. Mia notices Soul's soft spot for cute things; Soul acts awkward.";
+    else if (hostId === 'bam' && partyMemberId === 'mia') pairDynamic = "UNI BESTIES. Bam worries about Mia's attendance; Mia looks out for Bam like a bodyguard.";
+    else if (hostId === 'mia' && partyMemberId === 'bam') pairDynamic = "UNI BESTIES. Mia can drop her spy guard and laugh freely with Bam.";
+    else if (hostId === 'soul' && partyMemberId === 'miguel') pairDynamic = "VET & SECRET CAT MOM. Miguel is terrified Soul will discover Tofu (her hidden cat); Soul offers gentle animal advice.";
+    else if (hostId === 'miguel' && partyMemberId === 'soul') pairDynamic = "SECRET CAT MOM & VET. Miguel nervously asks cat questions while trying not to look suspicious.";
+    else if (hostId === 'fia' && partyMemberId === 'miguel') pairDynamic = "FITNESS COACH & DESK POTATO. Fia nags Miguel to fix her posture and move; Miguel cowers behind User.";
+    else if (hostId === 'miguel' && partyMemberId === 'fia') pairDynamic = "DESK POTATO & FITNESS COACH. Miguel tries to avoid Fia's intense workout challenges.";
 
-    if (hostId === 'erin' && partyMemberId === 'fia') pairDynamic = "CHEAT DAY BESTIES. They gossip and talk about food. Very loud and energetic together.";
-    if (hostId === 'fia' && partyMemberId === 'erin') pairDynamic = "CHEAT DAY BESTIES. Fia pretends to be strict but Erin tempts her to skip workout.";
+    // 2. GUEST'S INTIMATE RELATIONSHIP WITH USER
+    const guestTier = options?.guestTier || RelationshipTier.STRANGER;
+    const isRomance = [RelationshipTier.FLIRTING, RelationshipTier.PARTNER, RelationshipTier.SOULMATE, RelationshipTier.ETERNAL].includes(guestTier);
+    const isPlatonic = [RelationshipTier.BEST_FRIEND, RelationshipTier.SOUL_SIBLING].includes(guestTier);
+    const isFriend = guestTier === RelationshipTier.FRIEND;
 
-    if (hostId === 'mia' && partyMemberId === 'miguel') pairDynamic = "SECRET SISTERS. Mia (Spy) acts cold to protect Miguel, but eyes are soft. Miguel is confused why Mia is cold.";
-    if (hostId === 'miguel' && partyMemberId === 'mia') pairDynamic = "SISTERS. Miguel is happy to see Mia but worried she works too hard. Mia acts distant.";
+    let guestTitle = "คนรู้จัก (Acquaintance)";
+    let coupleInstruction = "";
 
-    if (hostId === 'soul' && partyMemberId === 'lucas') pairDynamic = "INSOMNIAC CLUB. Both are calm, quiet, and weird. They understand each other without words.";
+    if ([RelationshipTier.PARTNER, RelationshipTier.SOULMATE, RelationshipTier.ETERNAL].includes(guestTier)) {
+        guestTitle = guestTier === RelationshipTier.ETERNAL 
+            ? "คู่ชีวิตนิรันดร์ (Eternal Soulmate)" 
+            : guestTier === RelationshipTier.SOULMATE 
+                ? "คู่แท้ทางจิตวิญญาณ (Soulmate)" 
+                : "แฟน / คนรัก (Partner / Lover)";
+        
+        coupleInstruction = `
+    - **CRITICAL ROLEPLAY MANDATE FOR GUEST (${guest.name}):**
+      * You and the User are in a **COMMITTED ROMANTIC RELATIONSHIP (${guestTitle.toUpperCase()})**!
+      * You came to visit ${host.name} **TOGETHER AS A COUPLE**.
+      * **VOICE & TONE TOWARD USER:** Speak to the User with love, tender intimacy, and affectionate pronouns (e.g. "เธอ", "ตัวเอง", "พี่/น้อง", or your couple pet names). You must NEVER speak to User like a stranger, distant colleague, or casual client!
+      * **BODY LANGUAGE (Narrative Actions):** Stay close to User, hold User's hand or arm, lean against User, or exchange sweet glances.
+      * **COUPLE DYNAMICS IN FRONT OF HOST (${host.name}):**
+        - If ${host.name} welcomes you both: Be happy and stand proudly by User's side.
+        - If ${host.name} teases your couple status: Blush, smile, or lean closer to User affectionately.
+        - If ${host.name} acts flirtatious or overly intimate with User: Show cute, endearing couple jealousy, pout, pull User closer, or gently mark territory in character (e.g. Miguel clings nervously to User's arm; Jellie gives a sharp look and claims User; Fia smirks and flexes; Mia glares coolly).
+      * **CONTINUITY INTEGRITY:** It is an UNFORGIVABLE DEFECT to act as if you do not love the User.
+        `;
+    } else if (guestTier === RelationshipTier.FLIRTING) {
+        guestTitle = "คนคุย / กิ๊กคนพิเศษ (Flirting / Mutual Crush)";
+        coupleInstruction = `
+    - **ROLEPLAY MANDATE FOR GUEST (${guest.name}):**
+      * You and User have mutual romantic sparks and chemistry (${options?.guestChemistry || 50}/100).
+      * You are flirty, self-conscious around User, easily blushing, and happy that User brought you along.
+      * If ${host.name} teases you two, get flustered and try to act composed.
+        `;
+    } else if (isPlatonic) {
+        guestTitle = guestTier === RelationshipTier.SOUL_SIBLING ? "พี่น้องร่วมสาบาน (Soul Sibling)" : "เพื่อนสนิทที่สุด (Best Friend)";
+        coupleInstruction = `
+    - **ROLEPLAY MANDATE FOR GUEST (${guest.name}):**
+      * You are User's loyal best friend, wingman, and companion!
+      * Banter playfully with User, tease User, back User up in conversation, and enjoy visiting ${host.name} together as a team.
+        `;
+    } else if (isFriend) {
+        guestTitle = "เพื่อนที่ดีต่อกัน (Friend)";
+        coupleInstruction = `
+    - **ROLEPLAY MANDATE FOR GUEST (${guest.name}):**
+      * You consider User a close friend. You are warm, cheerful, and glad to tag along on this visit.
+        `;
+    }
+
+    // 3. HOST AWARENESS OF GUEST & USER'S RELATIONSHIP
+    const hostAwareness = `
+    - **HOST (${host.name}) AWARENESS OF GUEST & USER'S BOND:**
+      * ${host.name} KNOWS that User brought ${guest.name} as their **${guestTitle}**.
+      ${isRomance ? `* ${host.name} should naturally acknowledge their couple status (e.g. tease them "แหม ควงแฟนมาหาถึงที่เลยนะ", "คู่นี้น่ารักจัง", greet both warmly, or playfully comment on them).` : `* ${host.name} should acknowledge both User and ${guest.name} together as companions.`}
+      * ${host.name} must NEVER ignore ${guest.name} or act like User came alone.
+    `;
+
+    // 4. GUEST MEMORIES & CONTINUITY WITH USER
+    let guestMemoriesSection = "";
+    if (options?.guestMemories && options.guestMemories.length > 0) {
+        const memSnippet = getRelevantMemories(options.guestMemories, options.userText || "", 3).text;
+        if (memSnippet) {
+            guestMemoriesSection = `
+    - **GUEST'S RELEVANT MEMORIES WITH USER:**
+      ${memSnippet}
+      (Rule: ${guest.name} can naturally recall or refer to these shared moments with User if appropriate).
+            `;
+        }
+    }
+
+    // 5. GUEST RECENT CONTEXT (EMOTIONAL MOMENTUM)
+    let guestRecentChatSection = "";
+    if (options?.guestRecentMessages && options.guestRecentMessages.length > 0) {
+        const recentLines = options.guestRecentMessages.slice(-3).map(m => {
+            const senderLabel = m.sender === 'user' ? (options.userProfile?.name || 'USER') : (CHARACTER_DATA[m.sender]?.name || m.sender);
+            return `${senderLabel}: "${m.text}"`;
+        }).join(' | ');
+        if (recentLines) {
+            guestRecentChatSection = `
+    - **EMOTIONAL CONTINUITY (What User and ${guest.name} talked about just before arriving):**
+      ${recentLines}
+      (Rule: Do not reset emotional momentum. Keep the warmth/vibe alive).
+            `;
+        }
+    }
+
+    // 6. GUEST SPECIFIC BEHAVIOR
+    const guestBehavior = getRelationshipBehavior(partyMemberId, guestTier);
 
     return `
-    [📢 PARTY INTERACTION MODE ACTIVATED]
-    - **SITUATION:** User brought ${guest.name} (ID: ${partyMemberId}) to visit you.
-    - **DYNAMIC:** ${pairDynamic}
-    - **GUEST PERSONA (For you to roleplay):** ${guest.deepPersona}
-    - **GUEST SPEECH:** ${guest.speechStyle}
+    [📢 PARTY INTERACTION MODE: FULL SOCIAL CONTINUITY & BOND ACTIVE]
+    - **HOST:** ${host.name} (ID: ${hostId})
+    - **GUEST IN PARTY:** ${guest.name} (ID: ${partyMemberId})
+    - **PAIR DYNAMIC (Host <-> Guest):** ${pairDynamic}
+    - **GUEST'S RELATIONSHIP TO USER:** ${guestTitle} (Tier: ${guestTier}, Love: ${options?.guestLoveScore || 0} pts, Chem: ${options?.guestChemistry || 0}/100)
+    ${coupleInstruction}
+    ${hostAwareness}
+    ${guestMemoriesSection}
+    ${guestRecentChatSection}
+    - **GUEST PERSONA:** ${guest.deepPersona}
+    - **GUEST SPEECH STYLE:** ${guest.speechStyle}
+    ${guestBehavior}
     
-    [INSTRUCTION - STRICT]:
-    1. You MUST generate a conversation script.
+    [INSTRUCTION - SCRIPTING STRICT]:
+    1. You MUST generate a multi-character script where BOTH ${host.name} and ${guest.name} actively speak.
     2. **CRITICAL: Use the \`replies\` array field in the JSON output.**
     3. Each entry in \`replies\` must have a valid \`speaker_id\` matching either "${hostId}" or "${partyMemberId}".
-    4. Do NOT combine the conversation into the single \`reply\` text field. Separate them!
-    
-    Example Schema Request:
-    {
-      "replies": [
-        { "speaker_id": "${hostId}", "text": "..." },
-        { "speaker_id": "${partyMemberId}", "text": "..." }
-      ]
-    }
+    4. Do NOT combine the conversation into a single monologue. Create authentic interactive banter between Host, Guest, and User!
+    5. In \`thought\` field, convey Host (${host.name})'s inner reaction to seeing User with ${guest.name}.
+    6. If the interaction is meaningful, provide both \`new_memory\` (Host's perspective) and \`party_memory\` (Guest's perspective).
     `;
 };
 
