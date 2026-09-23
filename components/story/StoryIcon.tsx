@@ -1,5 +1,5 @@
 import React from 'react';
-import { BadgeCheck, DoorOpen, Image as ImageIcon, KeyRound, Radio, ReceiptText } from 'lucide-react';
+import { BadgeCheck, Box, DoorOpen, FileText, Image as ImageIcon, KeyRound, Radio, ReceiptText, Scissors, ShieldAlert } from 'lucide-react';
 import type { KeyStoryItem, StoryThread } from '../../domain/story/types';
 
 export function StoryItemIcon({ icon, size = 24 }: { icon: KeyStoryItem['icon']; size?: number }) {
@@ -7,9 +7,14 @@ export function StoryItemIcon({ icon, size = 24 }: { icon: KeyStoryItem['icon'];
   if (icon === 'maid_charm') return <KeyRound size={size} aria-hidden="true" />;
   if (icon === 'photo') return <ImageIcon size={size} aria-hidden="true" />;
   if (icon === 'vip_card') return <BadgeCheck size={size} aria-hidden="true" />;
+  if (icon === 'document') return <FileText size={size} aria-hidden="true" />;
+  if (icon === 'fabric') return <Scissors size={size} aria-hidden="true" />;
+  if (icon === 'box') return <Box size={size} aria-hidden="true" />;
   return <Radio size={size} aria-hidden="true" />;
 }
 
 export function StoryThreadIcon({ icon, size = 28 }: { icon: StoryThread['icon']; size?: number }) {
-  return icon === 'door' ? <DoorOpen size={size} aria-hidden="true" /> : <Radio size={size} aria-hidden="true" />;
+  if (icon === 'door') return <DoorOpen size={size} aria-hidden="true" />;
+  if (icon === 'shield') return <ShieldAlert size={size} aria-hidden="true" />;
+  return <Radio size={size} aria-hidden="true" />;
 }

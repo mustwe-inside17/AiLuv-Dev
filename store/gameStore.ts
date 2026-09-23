@@ -118,7 +118,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
         const state = get();
         const result = applyStoryCommand(state.story || emptyStoryProgress(), command, {
             characterId: charId, locationId: state.currentLocation, love: state.loveScores[charId] || 0,
-            busy: !!(state.voiceChat?.isActive || state.currentDateScene || state.activeTask || state.activeEvent || state.isSleeping || state.isGameOver || LOCATIONS[state.currentLocation]?.characterId !== charId)
+            busy: !!(state.voiceChat?.isActive || state.currentDateScene || state.isSleeping || state.isGameOver)
         }, Date.now());
         return result;
     },

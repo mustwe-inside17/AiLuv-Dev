@@ -1,5 +1,5 @@
 import type { StoryDialogueContext } from './storyDialogue';
-import { validateStoryDialogue } from './storyDialogue';
+import { validateStoryDialogueTurn } from './storyDialogue';
 import { getStoryPrompt, redactPilotIdentity, guardStoryTurn } from './storyContext';
 
 import { GoogleGenAI, Type, GenerateContentResponse, HarmCategory, HarmBlockThreshold } from "@google/genai";
@@ -858,8 +858,17 @@ export const generateResponse = async (
         });
 
         if (storyDialogue) {
-            const reply = validateStoryDialogue(sanitizedTurn, storyDialogue);
-            return { reply, mood: sanitizedTurn.mood, love_change: 0, chemistry_change: 0, energy_cost: 0 };
+            const storyTurn = validateStoryDialogueTurn(sanitizedTurn, storyDialogue);
+            return {
+                reply: storyTurn.reply,
+                replies: storyTurn.replies?.map(reply => ({ speaker_id: charId, text: reply.text })) || undefined,
+                thought: storyTurn.thought,
+                narrative_action: storyTurn.narrative_action,
+                mood: sanitizedTurn.mood,
+                love_change: 0,
+                chemistry_change: 0,
+                energy_cost: 0
+            };
         }
 
         if (sanitizedTurn.thought) {

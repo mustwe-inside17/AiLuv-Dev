@@ -17,6 +17,12 @@ Your verified shared story facts: ${facts.length ? facts.join(' | ') : 'None yet
 ${invitations.length ? `Available invitations (NOT events that already happened): ${invitations.map(node => node.guide).join(' | ')}` : 'Do not reveal another character’s private story facts. Suggest checking the notebook when relevant.'}
 ${!progress.flags['radio.erin_recalled'] ? 'The radio’s connection to Midnight City is LOCKED.' : 'Erin has spoken about the radio to the player; other characters do not automatically know that conversation.'}
 ${!progress.flags['cat_food.soul_confessed'] ? 'The identity of the person who left cat food, and any suspicious visitors near Miguel’s room that night, are LOCKED.' : 'Soul has confessed to leaving the cat food and told the player about the suspicious visitors.'}
+${!progress.flags['aurelia.retrieval_order_obtained'] ? 'Aurelia’s true reason for monitoring unit 2407 and the MRS-A Offline Archive are LOCKED.' : 'The player and characters know Aurelia was searching for the MRS-A Offline Archive, not collecting debt.'}
+CRITICAL CANON CONSTRAINTS:
+- Never confirm that Marisa’s accident was an assassination.
+- Never reveal that Mia works for a Handler.
+- Never reveal who currently holds the missing Offline Archive.
+- Never portray Achira Wellington as an outright villain giving hit orders.
 Voice calls cannot grant Key Items; invite the player to meet and use the story button after the call.
 `;
 }

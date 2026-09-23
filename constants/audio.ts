@@ -33,5 +33,8 @@ export const SFX = {
     bubble_wrong: '/audio/sfx_wrong.mp3',
     gacha_roll: '/audio/sfx_gacha_roll.mp3',
     gacha_reveal: '/audio/sfx_gacha_reveal.mp3',
-    level_up: '/audio/sfx_levelup.mp3' // NEW: Level Up Sound
+    level_up: '/audio/sfx_levelup.mp3', // NEW: Level Up Sound
+    story_item_received: '/audio/sfx_gacha_reveal.mp3',
+    story_completed: '/audio/Ailuvsuccess.mp3',
+    story_node_success: '/audio/sfx_success.mp3'
 };

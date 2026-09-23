@@ -231,13 +231,30 @@ export interface PendingQuestReward {
   selectedOptionText?: string;
 }
 
+export interface StoryKeyDelivery {
+  itemId: string;
+  name: string;
+  imageUrl?: string;
+  icon?: string;
+  description?: string;
+  hint?: string;
+  claimed?: boolean;
+  threadTitle?: string;
+  nodeTitle?: string;
+  nodeSummary?: string;
+}
+
 export interface Message {
   storyInteraction?: {
     command: import('./domain/story/types').StoryCommand;
     status: 'pending' | 'error' | 'complete';
     title: string;
     playerText: string;
+    sequenceIndex?: number;
+    sequenceTotal?: number;
   };
+  storyKeyDelivery?: StoryKeyDelivery;
+  storyKeyPresentation?: StoryKeyDelivery;
   id: string;
   sender: CharacterId | 'user' | 'system';
   text: string;
@@ -245,6 +262,12 @@ export interface Message {
   isEventMessage?: boolean;
   narrativeContent?: string;
   thought?: string;
+  giftPresentation?: {
+    itemId: string;
+    name: string;
+    emoji: string;
+    recipientName: string;
+  };
   imageUrl?: string;
   isImageLoading?: boolean;
   isSecretResend?: boolean;

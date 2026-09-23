@@ -3,9 +3,10 @@ import { AnimatePresence, motion } from 'motion/react';
 import React, { lazy, Suspense, useState, useEffect } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { useGameStore } from '../../store/gameStore';
-import { BookOpen, X, Wifi, Battery, Signal, Camera, MessageSquare, Mail, Wallet, Settings, Cloud, Calendar as CalendarIcon, Music, Map as MapIcon, Compass, Phone, Aperture, Play, Pause, SkipForward, Crown } from 'lucide-react';
+import { BookOpen, X, Wifi, Battery, Signal, Camera, MessageSquare, Mail, Wallet, Settings, Cloud, Calendar as CalendarIcon, Music, Map as MapIcon, Compass, Phone, Aperture, Play, Pause, SkipForward, Crown, Download } from 'lucide-react';
 import { BASEMENT_TRACKS } from '../../constants';
 import { useUIStore } from '../../store/uiStore';
+import { openInstallModal } from '../InstallPrompt';
 
 const StoryJournalApp = lazy(() => import('./apps/StoryJournalApp').then(module => ({ default: module.StoryJournalApp })));
 const AiGramApp = lazy(() => import('./apps/AiGramApp').then(module => ({ default: module.AiGramApp })));
@@ -388,6 +389,12 @@ export const PhoneOverlay: React.FC<PhoneOverlayProps> = ({
                                         bgGradient="bg-gradient-to-br from-yellow-400 via-amber-500 to-yellow-600"
                                         notification={isVipDailyClaimable ? 1 : 0}
                                         onClick={() => useUIStore.getState().setShowVipModal(true)}
+                                    />
+                                    <AppIcon 
+                                        label="Install" 
+                                        icon={<Download size={28} />} 
+                                        bgGradient="bg-gradient-to-br from-pink-500 via-rose-500 to-purple-600"
+                                        onClick={openInstallModal}
                                     />
                                 </div>
                             </div>

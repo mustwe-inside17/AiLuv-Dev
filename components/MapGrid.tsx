@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef, MouseEvent, TouchEvent } from 'reac
 import { LocationId, TimeOfDay, ActiveEvent, CharacterId, StoryChapter, RelationshipTier } from '../types';
 import { LOCATIONS, TRAVEL_COST, LOCATION_IMAGES, CHARACTER_DATA, STORY_CHAPTERS, SHOP_ITEMS } from '../constants';
 import { FASHION_ITEMS } from '../constants/fashion'; 
-import { MapPin, Zap, Dumbbell, Briefcase, PartyPopper, Lock, AlertCircle, X, Navigation, User, Clock, ShoppingBag, Music, Star, Users, Sparkles, BookOpen, Gem, ArrowDown, Calendar, Crown, Sun, Moon, CloudSun, Sunset, Backpack, MessageCircle } from 'lucide-react';
+import { MapPin, Zap, Dumbbell, Briefcase, PartyPopper, Lock, AlertCircle, X, Navigation, User, Clock, ShoppingBag, Music, Star, Users, Sparkles, BookOpen, Gem, ArrowDown, Calendar, Crown, Sun, Moon, CloudSun, Sunset, Backpack, MessageCircle, Gift, ChevronRight } from 'lucide-react';
 import { getCharacterImageUrl } from '../services/firebase';
 import { StoryOverlay } from './StoryOverlay';
 import { DailyLoginModal } from './DailyLoginModal'; 
@@ -750,29 +750,39 @@ export const MapGrid: React.FC<MapGridProps> = ({ currentLocation, onTravel, ene
               <div 
                   onClick={() => {
                       if (hasDailyClaim) {
-                          useGameStore.getState().togglePhone();
+                          setShowDailyLogin(true);
                       }
                   }}
-                  className={`mt-2 ml-1 flex items-start gap-1.5 max-w-[260px] transition-all duration-500 overflow-hidden pointer-events-auto ${hasDailyClaim ? 'cursor-pointer hover:scale-105 active:scale-95' : ''} ${rumorVisible ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-2'}`}
+                  className={`mt-2 ml-1 flex items-start max-w-[280px] transition-all duration-500 overflow-hidden pointer-events-auto ${hasDailyClaim ? 'cursor-pointer hover:scale-[1.02] active:scale-95' : ''} ${rumorVisible ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-2'}`}
               >
-                  <div className={`flex items-start gap-2 p-1.5 pr-3 rounded-r-xl rounded-l-md border-l-2 backdrop-blur-sm ${
-                      hasDailyClaim 
-                      ? 'border-pink-500 bg-gradient-to-r from-pink-500/20 via-purple-500/10 to-transparent' 
-                      : timeOfDay === 'night' 
-                      ? 'bg-gradient-to-r from-slate-900/40 to-transparent border-indigo-500/50' 
-                      : 'bg-gradient-to-r from-white/40 to-transparent border-indigo-500/50'
-                  }`}>
-                      {hasDailyClaim ? (
-                          <span className="text-xs animate-bounce">🎁</span>
-                      ) : (
-                          <MessageCircle size={10} className="text-indigo-500 dark:text-indigo-400 mt-0.5 shrink-0" />
-                      )}
-                      <p className={`text-[10px] leading-snug font-bold drop-shadow-sm ${hasDailyClaim ? 'text-pink-600 dark:text-pink-300 font-extrabold' : 'text-slate-700 dark:text-slate-200 italic'}`}>
-                          {hasDailyClaim 
-                              ? '🎁 มีรางวัล Daily Reward รออยู่! แตะเพื่อเปิด A-Phone รับของ' 
-                              : CITY_RUMORS[rumorIndex]}
-                      </p>
-                  </div>
+                  {hasDailyClaim ? (
+                      <div className="flex items-center gap-2.5 px-3 py-2 rounded-xl backdrop-blur-md bg-gradient-to-r from-amber-500/20 via-indigo-950/70 to-purple-950/50 border border-amber-400/40 dark:border-amber-400/30 shadow-md shadow-amber-500/10 transition-all hover:border-amber-400/70 group">
+                          <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center text-slate-950 shadow-sm shrink-0 animate-bounce-soft">
+                              <Gift size={13} className="text-slate-950" strokeWidth={2.5} />
+                          </div>
+                          <div className="flex flex-col min-w-0 flex-1">
+                              <span className="text-[9px] font-black uppercase tracking-wider text-amber-500 dark:text-amber-400 leading-none mb-0.5 flex items-center gap-1">
+                                  Daily Reward
+                                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping inline-block"></span>
+                              </span>
+                              <p className="text-[11px] leading-tight font-extrabold text-slate-800 dark:text-amber-100 tracking-tight">
+                                  มีรางวัลรออยู่! แตะเพื่อรับของ
+                              </p>
+                          </div>
+                          <ChevronRight size={14} className="text-amber-500/80 dark:text-amber-300/80 shrink-0 group-hover:translate-x-0.5 transition-transform" />
+                      </div>
+                  ) : (
+                      <div className={`flex items-start gap-2 p-1.5 pr-3 rounded-r-xl rounded-l-md border-l-2 backdrop-blur-sm ${
+                          timeOfDay === 'night' 
+                          ? 'bg-gradient-to-r from-slate-900/60 to-transparent border-indigo-500/50' 
+                          : 'bg-gradient-to-r from-white/70 to-transparent border-indigo-500/50'
+                      }`}>
+                          <MessageCircle size={11} className="text-indigo-500 dark:text-indigo-400 mt-0.5 shrink-0" />
+                          <p className="text-[10px] leading-snug font-medium text-slate-700 dark:text-slate-200 italic drop-shadow-sm">
+                              {CITY_RUMORS[rumorIndex]}
+                          </p>
+                      </div>
+                  )}
               </div>
           </div>
           

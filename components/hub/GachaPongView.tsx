@@ -12,6 +12,7 @@ import { Gem, X, HelpCircle, RefreshCw, Sparkles, Check, ChevronRight, Info, Zap
 import { useGameStore } from '../../store/gameStore';
 import { playSfx } from '../../utils/audioUtils';
 import { EmojiIcon } from '../ui/EmojiIcon';
+import { ItemArtwork } from '../ui/ItemArtwork';
 
 interface GachaPongViewProps {
     gameState: GameState;
@@ -76,19 +77,26 @@ export const GachaPongView: React.FC<GachaPongViewProps> = ({ gameState, onBack 
     }, [isRolling]);
 
     // Helper to get Real Icons
-    const resolveItemVisuals = (gachaItem: GachaItem) => {
+    const resolveItemVisuals = (gachaItem: GachaItem): { emoji: string; itemId?: string; color: string; name: string } => {
         if (gachaItem.type === 'gold') return { emoji: '💰', color: 'text-yellow-500', name: `${gachaItem.amount} Gold` };
         if (gachaItem.type === 'diamond') return { emoji: '💎', color: 'text-cyan-400', name: `${gachaItem.amount} Diamonds` };
         
         // Lookup Shop Items
         const shopItem = SHOP_ITEMS.find(i => i.id === gachaItem.id);
-        if (shopItem) return { emoji: shopItem.emoji, color: 'text-gray-800 dark:text-white', name: shopItem.name };
+        if (shopItem) return { emoji: shopItem.emoji, itemId: shopItem.id, color: 'text-gray-800 dark:text-white', name: shopItem.name };
         
         // Lookup Fashion Items
         const styleItem = FASHION_ITEMS.find(i => i.id === gachaItem.id);
         if (styleItem) return { emoji: styleItem.icon || '👕', color: 'text-fuchsia-400', name: styleItem.name };
         
         return { emoji: '🎁', color: 'text-pink-400', name: 'Mystery Item' };
+    };
+
+    const GachaVisual = ({ item, className }: { item: GachaItem; className: string }) => {
+        const visual = resolveItemVisuals(item);
+        return visual.itemId
+            ? <ItemArtwork itemId={visual.itemId} name={visual.name} className={className} />
+            : <EmojiIcon emoji={visual.emoji} className={className} />;
     };
 
     // Helper to get Detailed Info (Description, Type, Stats)
@@ -351,7 +359,7 @@ export const GachaPongView: React.FC<GachaPongViewProps> = ({ gameState, onBack 
                                 {isRolling && displayedItem ? (
                                     <div className="flex flex-col items-center animate-bounce-soft">
                                         <div className="text-7xl filter drop-shadow-[0_0_20px_rgba(255,255,255,0.8)] transform scale-125 transition-all flex items-center justify-center w-24 h-24">
-                                            <EmojiIcon emoji={resolveItemVisuals(displayedItem).emoji} />
+                                            <GachaVisual item={displayedItem} className="h-24 w-24" />
                                         </div>
                                         <div className="mt-2 text-white font-bold text-sm tracking-wide drop-shadow-md bg-black/50 px-3 py-1 rounded-full border border-white/10">
                                             {resolveItemVisuals(displayedItem).name}
@@ -360,7 +368,7 @@ export const GachaPongView: React.FC<GachaPongViewProps> = ({ gameState, onBack 
                                 ) : (
                                     <div key={showcaseItem.id + Math.random()} className="flex flex-col items-center animate-in fade-in zoom-in duration-700">
                                         <div className="text-6xl filter drop-shadow-[0_0_15px_rgba(255,255,255,0.4)] transform transition-all hover:scale-110 flex items-center justify-center w-20 h-20">
-                                            <EmojiIcon emoji={resolveItemVisuals(showcaseItem).emoji} />
+                                            <GachaVisual item={showcaseItem} className="h-20 w-20" />
                                         </div>
                                         <div className="mt-2 text-white/90 font-bold text-xs tracking-wide drop-shadow-md bg-black/50 px-3 py-1 rounded-full border border-white/10">
                                             {resolveItemVisuals(showcaseItem).name}
@@ -382,7 +390,7 @@ export const GachaPongView: React.FC<GachaPongViewProps> = ({ gameState, onBack 
                                 {isRolling && displayedItem ? (
                                     <div className="flex flex-col items-center animate-bounce-soft">
                                         <div className="text-7xl filter drop-shadow-[0_0_20px_rgba(255,255,255,0.8)] transform scale-125 transition-all flex items-center justify-center w-24 h-24">
-                                            <EmojiIcon emoji={resolveItemVisuals(displayedItem).emoji} />
+                                            <GachaVisual item={displayedItem} className="h-24 w-24" />
                                         </div>
                                         <div className="mt-2 text-white font-bold text-sm tracking-wide drop-shadow-md bg-black/50 px-3 py-1 rounded-full border border-white/10">
                                             {resolveItemVisuals(displayedItem).name}
@@ -391,7 +399,7 @@ export const GachaPongView: React.FC<GachaPongViewProps> = ({ gameState, onBack 
                                 ) : (
                                     <div key={showcaseItem.id + Math.random()} className="flex flex-col items-center animate-in fade-in zoom-in duration-700">
                                         <div className="text-6xl mb-2 filter drop-shadow-[0_0_15px_rgba(255,255,255,0.4)] transform transition-all hover:scale-110 flex items-center justify-center w-20 h-20">
-                                            <EmojiIcon emoji={resolveItemVisuals(showcaseItem).emoji} />
+                                            <GachaVisual item={showcaseItem} className="h-20 w-20" />
                                         </div>
                                         <div className="mb-2 text-white/90 font-bold text-xs tracking-wide drop-shadow-md bg-black/50 px-3 py-1 rounded-full border border-white/10">
                                             {resolveItemVisuals(showcaseItem).name}
@@ -513,7 +521,7 @@ export const GachaPongView: React.FC<GachaPongViewProps> = ({ gameState, onBack 
                                             
                                             {/* Icon */}
                                             <div className={`${isSingle ? 'text-8xl mb-6 w-32 h-32' : 'text-4xl mt-2 mb-3 w-12 h-12'} filter drop-shadow-[0_0_15px_rgba(255,255,255,0.2)] transform transition-transform hover:scale-110 duration-300 relative z-10 flex items-center justify-center mx-auto`}>
-                                                <EmojiIcon emoji={visual.emoji} />
+                                                <GachaVisual item={item} className={isSingle ? 'h-32 w-32' : 'h-12 w-12'} />
                                             </div>
                                             
                                             {/* Name & Type */}
@@ -586,7 +594,7 @@ export const GachaPongView: React.FC<GachaPongViewProps> = ({ gameState, onBack 
                                             const vis = resolveItemVisuals(i);
                                             return (
                                                 <span key={i.id + i.name} className="text-[10px] bg-black/40 border border-white/5 px-2 py-1 rounded-md flex items-center gap-1.5 font-medium text-white/80">
-                                                    <EmojiIcon emoji={vis.emoji} /> {i.name}
+                                                    <GachaVisual item={i} className="h-5 w-5" /> {i.name}
                                                 </span>
                                             );
                                         })}

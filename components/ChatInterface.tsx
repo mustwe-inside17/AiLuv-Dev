@@ -1,12 +1,12 @@
 
 import React, { useRef, useEffect, useState } from 'react';
-import { Sparkles, Trash2, MessageCircle, Zap, Users, BrainCircuit, XCircle, Info, Flame, Heart, HeartCrack, Clapperboard, X, Lock, Clover, Wine, Mic, MicOff, PhoneOff } from 'lucide-react'; // Added MicOff, PhoneOff
+import { Sparkles, Trash2, MessageCircle, Zap, Users, BrainCircuit, Info, Flame, Heart, HeartCrack, X, Clover, Mic } from 'lucide-react';
 import { Message, Mood, ActionType, CharacterId, RelationshipTier, ActiveEvent, TutorialStep, CharacterQuest, SceneType } from '../types'; // Added SceneType
-import { CHARACTER_DATA, LOCATIONS } from '../constants';
+import { CHARACTER_DATA, LOCATIONS, TIER_LEVELS } from '../constants';
 import { getCharacterImageUrl } from '../services/firebase';
 import { getThemeData } from '../constants/themes'; 
 import { generateCreativeScenarios } from '../services/mockAi'; 
-import { ChatActionMenu } from './ChatActionMenu';
+import { ChatActionMenu, type ActionMenuView } from './ChatActionMenu';
 import { useShallow } from 'zustand/react/shallow';
 import { useGameStore } from '../store/gameStore';
 import { useUIStore } from '../store/uiStore';
@@ -15,11 +15,15 @@ import { geminiLiveService } from '../services/geminiLiveService';
 
 // Import New Sub-Components
 import { ChatMessageBubble } from './chat/ChatMessageBubble';
-import { StoryChatPanel, StoryContinuation } from './story/StoryChatPanel';
+import { StoryChatPanel } from './story/StoryChatPanel';
 import { ChatInputArea } from './chat/ChatInputArea';
 import { ScenarioMenu } from './chat/ScenarioMenu';
 import { DateSelectionModal } from './modals/DateSelectionModal'; // NEW IMPORT
 import { VoiceChatOverlay } from './chat/VoiceChatOverlay';
+import { GiftGivingFlow } from './chat/GiftGivingFlow';
+import { emptyStoryProgress, getAvailableStoryNodes } from '../domain/story/storyEngine';
+import { canInviteOnDate, getPartyQuickActionState } from '../domain/chat/quickActions';
+import { GiftIntent } from '../domain/chat/giftFlow';
 
 interface ChatInterfaceProps {
   characterId: CharacterId;
@@ -56,6 +60,8 @@ interface ChatInterfaceProps {
 export const ChatInterface: React.FC<ChatInterfaceProps> = ({ characterId, messages, onSendMessage, onAction, onIdleTrigger, onClearChat, isTyping, disabled, currentMood, loveScore, inventory = {}, onImageClick, energy, comboStreak = 0, currentTier = RelationshipTier.STRANGER, activeEvent, tutorialStep, lastLoveUpdate, onDragStart, partyMemberId, unlockedSkills = [], gold = 0, onBuyItem, onAcceptQuest, onInputFocus, onInputBlur, chemistryScore = 0, onBuyAction, onAddSystemMessage }) => {
   const [inputText, setInputText] = useState('');
   const [showActions, setShowActions] = useState(false);
+  const [actionMenuView, setActionMenuView] = useState<ActionMenuView>('hub');
+  const [giftIntent, setGiftIntent] = useState<GiftIntent | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string>('');
   const [partyAvatarUrl, setPartyAvatarUrl] = useState<string>('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -82,7 +88,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ characterId, messa
   const [isModelSpeaking, setIsModelSpeaking] = useState(false);
 
   // Store Access
-  const { dailyThemes, activeRareVibes, currentDateScene, setDateScene, diamonds, spendDiamonds, currentLocation, voiceChat, setVoiceChatActive, toggleMic } = useGameStore(useShallow(state => ({
+  const { dailyThemes, activeRareVibes, currentDateScene, setDateScene, diamonds, spendDiamonds, currentLocation, voiceChat, setVoiceChatActive, toggleMic, story } = useGameStore(useShallow(state => ({
       dailyThemes: state.dailyThemes,
       activeRareVibes: state.activeRareVibes,
       currentDateScene: state.currentDateScene,
@@ -92,7 +98,8 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ characterId, messa
       currentLocation: state.currentLocation,
       voiceChat: state.voiceChat,
       setVoiceChatActive: state.setVoiceChatActive,
-      toggleMic: state.toggleMic
+      toggleMic: state.toggleMic,
+      story: state.story
   })));
   const currentThemeId = dailyThemes?.[characterId];
   const isRareVibe = activeRareVibes?.[characterId];
@@ -110,6 +117,8 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ characterId, messa
       setGeneratedScenarios([]);
       setIsGeneratingScenarios(false);
       setShowScenarioMenu(false);
+      setGiftIntent(null);
+      setActionMenuView('hub');
   }, [characterId]);
 
   // SFX: Typing
@@ -305,8 +314,23 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ characterId, messa
 
   const isDateMode = !!currentDateScene;
   
-  // [MARCUS FIX] Can only invite if Chemistry >= 60 (Golden Hour)
-  const canInviteDate = chemistryScore >= 60;
+  const isFriend = TIER_LEVELS[currentTier] >= TIER_LEVELS[RelationshipTier.FRIEND];
+  const canInviteDate = canInviteOnDate(currentTier, chemistryScore);
+  const partyState = getPartyQuickActionState(characterId, partyMemberId);
+
+  const closeActionMenu = () => {
+      setShowActions(false);
+      setActionMenuView('hub');
+  };
+
+  const toggleFullActionMenu = () => {
+      if (showActions) closeActionMenu();
+      else setShowActions(true);
+  };
+
+  const handlePartyQuickAction = () => {
+      onAction(partyState === 'current' ? 'leave_party' : 'invite_party');
+  };
 
   return (
     <div className="flex flex-col h-full bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl md:rounded-none shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.1)] dark:shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.5)] md:shadow-none relative z-20 transition-colors duration-500 overflow-visible border-t border-gray-200 dark:border-white/10">
@@ -314,6 +338,27 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ characterId, messa
       {/* Date Selection Modal */}
       {showDateModal && (
           <DateSelectionModal onClose={() => setShowDateModal(false)} onSelect={handleDateSelect} />
+      )}
+
+      {giftIntent && (
+          <GiftGivingFlow
+              intent={giftIntent}
+              characterName={CHARACTER_DATA[characterId]?.name || 'ตัวละคร'}
+              gold={gold}
+              diamonds={diamonds || 0}
+              onCancel={resumeActions => {
+                  setGiftIntent(null);
+                  if (resumeActions) setShowActions(true);
+              }}
+              onConfirmed={() => setShowActions(false)}
+              onDeliver={intent => {
+                  setGiftIntent(null);
+                  setShowActions(false);
+                  setActionMenuView('hub');
+                  if (intent.source === 'express') onBuyAction?.(intent.actionType);
+                  else onAction(intent.actionType);
+              }}
+          />
       )}
 
       {/* Mobile Drag Handle */}
@@ -404,8 +449,8 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ characterId, messa
           </div>
       ))}
 
-      {/* Header Bar */}
-      <div className={`ailuv-chat-header flex items-center justify-between px-6 py-3 border-b border-gray-100 dark:border-white/5 shrink-0 bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm relative z-20 ${onDragStart ? 'mt-3 md:mt-0' : ''}`}>
+      {/* Floating character identity card on mobile; regular header on desktop. */}
+      <div className="ailuv-chat-header absolute -top-[76px] left-3 right-3 min-h-[68px] flex items-center justify-between px-4 py-2.5 rounded-[24px] border border-white/70 dark:border-white/10 bg-white/90 dark:bg-[#111a2e]/90 backdrop-blur-xl shadow-[0_16px_38px_rgba(15,23,42,0.2)] dark:shadow-[0_18px_46px_rgba(0,0,0,0.46)] z-40 md:static md:min-h-0 md:rounded-none md:border-x-0 md:border-t-0 md:px-6 md:py-3 md:bg-white/65 md:dark:bg-slate-900/65 md:shadow-none">
          <div className="chat-person flex items-center gap-3 ml-2 min-w-0">
             <div className="relative">
                 <div className={`w-12 h-12 rounded-full border-2 shadow-md overflow-hidden bg-gray-200 dark:bg-slate-800 ${isDateMode ? 'border-purple-500 ring-2 ring-purple-500/30' : 'border-white dark:border-slate-700'}`}>
@@ -427,7 +472,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ characterId, messa
 
             <div>
                 <div className="flex items-center gap-1.5 flex-wrap">
-                    <h3 className={`font-bold text-sm ${isDateMode ? 'text-purple-600 dark:text-purple-300' : 'text-slate-800 dark:text-white'}`}>{CHARACTER_DATA[characterId].name}</h3>
+                    <h3 className={`font-extrabold text-base leading-tight ${isDateMode ? 'text-rose-600 dark:text-rose-300' : 'text-slate-900 dark:text-white'}`}>{CHARACTER_DATA[characterId].name}</h3>
                     {currentTier === RelationshipTier.PARTNER && <Heart size={10} className="fill-red-500 text-red-500" />}
                     {partyMemberId && partyMemberId !== characterId && (
                         <span className="flex items-center gap-1 text-[11px] text-pink-600 dark:text-pink-300 font-medium bg-pink-50 dark:bg-pink-950/50 px-2 py-0.5 rounded-full border border-pink-200 dark:border-pink-800/40 shadow-xs">
@@ -483,19 +528,6 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ characterId, messa
          </div>
          <div className="chat-header-actions flex items-center gap-3 shrink-0">
         <StoryChatPanel characterId={characterId} disabled={!!(isTyping || disabled || isVoiceMode)} onAction={command => onSendMessage('@story:' + JSON.stringify(command))} />
-             {/* [MARCUS FIX] INVITE DATE BUTTON - Conditionally Rendered with Visual Upgrade */}
-             {canInviteDate && !isDateMode && !disabled && (
-                 <button 
-                    onClick={() => setShowDateModal(true)}
-                    className="p-1.5 rounded-full bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-lg shadow-pink-500/40 hover:scale-110 active:scale-95 transition-all animate-in zoom-in group relative overflow-hidden"
-                    title="Invite Date"
-                 >
-                     <Wine size={16} fill="currentColor" className="animate-pulse relative z-10" />
-                     {/* Shine Effect */}
-                     <div className="absolute inset-0 bg-white/30 skew-x-12 -translate-x-full group-hover:animate-[shimmer_1s_infinite]"></div>
-                 </button>
-             )}
-
              {canReadMind && (
                  <div className="text-cyan-500 dark:text-cyan-400 animate-pulse" title="Mind Reader Active">
                      <BrainCircuit size={16} />
@@ -534,30 +566,55 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ characterId, messa
             </div>
         )}
         
-        {messages.filter(msg => {
-            if (!msg) return false;
-            if (typeof msg.text !== 'string') return false; 
-            if (msg.text.startsWith('[SYSTEM:')) return false;
-            return true;
-        }).map((msg) => (
-            <ChatMessageBubble 
-                key={msg.id}
-                message={msg}
-                characterId={characterId}
-                isDateMode={isDateMode}
-                canReadMind={canReadMind}
-                onImageClick={onImageClick}
-                onStoryRetry={id => onSendMessage('@story-retry:' + id)}
-                storyBusy={isTyping}
-                onScrollToBottom={scrollToBottom}
-                partyMemberId={partyMemberId}
-                energy={energy}
-                gold={gold}
-                diamonds={diamonds || 0}
-                onBuyItem={onBuyItem}
-                onAcceptQuest={onAcceptQuest}
-            />
-        ))}
+        {(() => {
+            const storyProgress = story || emptyStoryProgress();
+            const availableNodes = getAvailableStoryNodes(storyProgress);
+            const activeNode = availableNodes.find(node => {
+                if (node.characterId !== characterId || node.locationId !== currentLocation) return false;
+                if ((loveScore || 0) < node.requires.minLove) return false;
+                if (node.trigger === 'present') {
+                    if (!(node.requires.itemId && storyProgress.keyItems?.[node.requires.itemId])) return false;
+                }
+                return true;
+            });
+            const availableStoryAction = activeNode ? {
+                node: activeNode,
+                command: (activeNode.trigger === 'present' && activeNode.requires.itemId
+                    ? { type: 'present' as const, itemId: activeNode.requires.itemId }
+                    : { type: 'node' as const, nodeId: activeNode.id })
+            } : null;
+
+            const filteredMsgs = messages.filter(msg => {
+                if (!msg) return false;
+                if (typeof msg.text !== 'string') return false; 
+                if (msg.text.startsWith('[SYSTEM:')) return false;
+                return true;
+            });
+
+            const lastCharMsg = [...filteredMsgs].reverse().find(m => m.sender === characterId);
+
+            return filteredMsgs.map((msg) => (
+                <ChatMessageBubble 
+                    key={msg.id}
+                    message={msg}
+                    characterId={characterId}
+                    isDateMode={isDateMode}
+                    canReadMind={canReadMind}
+                    onImageClick={onImageClick}
+                    onStoryRetry={id => onSendMessage('@story-retry:' + id)}
+                    storyBusy={isTyping}
+                    onScrollToBottom={scrollToBottom}
+                    partyMemberId={partyMemberId}
+                    energy={energy}
+                    gold={gold}
+                    diamonds={diamonds || 0}
+                    onBuyItem={onBuyItem}
+                    onAcceptQuest={onAcceptQuest}
+                    availableStoryAction={msg.id === lastCharMsg?.id ? availableStoryAction : null}
+                    onStoryAction={cmd => onSendMessage('@story:' + JSON.stringify(cmd))}
+                />
+            ));
+        })()}
         {isTyping && (
             <div className="flex justify-start animate-in fade-in">
                 <div className={`border rounded-2xl rounded-tl-none px-4 py-3 shadow-sm flex items-center gap-1.5 ${isDateMode ? 'bg-purple-50 border-purple-200 dark:bg-purple-900/30 dark:border-purple-600' : 'bg-white border-gray-200 dark:bg-slate-800 dark:border-slate-700'}`}>
@@ -577,13 +634,27 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ characterId, messa
                 characterId={characterId} 
                 currentTier={currentTier || RelationshipTier.STRANGER} 
                 energy={energy} 
+                gold={gold}
+                diamonds={diamonds || 0}
                 disabled={disabled || isTyping} 
                 inventory={inventory} 
                 onAction={onAction} 
-                onClose={() => setShowActions(false)} 
+                onClose={closeActionMenu}
                 loveScore={loveScore} 
-                onBuyAction={onBuyAction}
-                chemistryScore={chemistryScore} // [MARCUS FIX] Pass chemistry
+                onGiftSelected={setGiftIntent}
+                chemistryScore={chemistryScore}
+                canInviteDate={canInviteDate}
+                isDateMode={isDateMode}
+                isFriend={isFriend}
+                partyState={partyState}
+                partyMemberName={partyMemberId ? CHARACTER_DATA[partyMemberId]?.name : undefined}
+                onRequestDate={() => {
+                    closeActionMenu();
+                    setShowDateModal(true);
+                }}
+                onPartyAction={handlePartyQuickAction}
+                view={actionMenuView}
+                onViewChange={setActionMenuView}
             />
         )}
         
@@ -599,13 +670,11 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ characterId, messa
             cost={SCENARIO_COST}
         />
 
-
-        <StoryContinuation characterId={characterId} disabled={!!(isTyping || disabled || isVoiceMode)} onAction={command => onSendMessage('@story:' + JSON.stringify(command))} />
         <ChatInputArea 
             inputText={inputText}
             setInputText={setInputText}
             onSendMessage={handleSubmit}
-            onToggleActions={() => setShowActions(!showActions)}
+            onToggleActions={toggleFullActionMenu}
             showActions={showActions}
             disabled={disabled || isTyping}
             isTyping={isTyping}

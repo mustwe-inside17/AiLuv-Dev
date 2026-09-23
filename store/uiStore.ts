@@ -1,7 +1,19 @@
 import { create } from 'zustand';
 import { AppView, LocationId, CharacterId, AppNotification } from '../types';
+import type { KeyStoryItem } from '../domain/story/types';
 
 export type ModalName = 'welcome' | 'diamond' | 'story' | 'login' | 'inventory' | 'vip';
+
+export interface StoryEventModalData {
+  type: 'item_received' | 'node_completed' | 'episode_completed';
+  item?: KeyStoryItem;
+  nodeTitle?: string;
+  nodeSummary?: string;
+  threadTitle?: string;
+  threadCoverImage?: string;
+  episodeSummary?: string;
+  completedNodes?: { title: string; summary: string }[];
+}
 
 interface UIState {
   // View navigation
@@ -22,6 +34,7 @@ interface UIState {
   showInventory: boolean;
   fullScreenImage: string | null;
   levelUpData: number | null;
+  storyEventModal: StoryEventModalData | null;
 
   // Travel UI
   isTraveling: boolean;
@@ -45,6 +58,7 @@ interface UIState {
 
   setFullScreenImage: (url: string | null) => void;
   setLevelUpData: (level: number | null) => void;
+  setStoryEventModal: (data: StoryEventModalData | null) => void;
   
   setIsTraveling: (isTraveling: boolean) => void;
   setTravelTarget: (target: LocationId | null) => void;
@@ -66,6 +80,7 @@ export const useUIStore = create<UIState>((set) => ({
   showInventory: false,
   fullScreenImage: null,
   levelUpData: null,
+  storyEventModal: null,
   
   isTraveling: false,
   travelTarget: null,
@@ -87,6 +102,7 @@ export const useUIStore = create<UIState>((set) => ({
   
   setFullScreenImage: (url) => set({ fullScreenImage: url }),
   setLevelUpData: (level) => set({ levelUpData: level }),
+  setStoryEventModal: (data) => set({ storyEventModal: data }),
   
   setIsTraveling: (isTraveling) => set({ isTraveling: isTraveling }),
   setTravelTarget: (target) => set({ travelTarget: target })

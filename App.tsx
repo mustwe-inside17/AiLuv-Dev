@@ -32,6 +32,7 @@ import { GlobalModals } from './components/layout/GlobalModals';
 import { LoadingScreen } from './components/LoadingScreen';
 import { ChemistryMeter } from './components/ChemistryMeter'; 
 import { PhoneOverlay } from './components/phone/PhoneOverlay'; // NEW
+import { StoryEventModal } from './components/story/StoryEventModal';
 import { InventoryModal } from './components/InventoryModal';
 import { ErrorBoundary } from './components/ErrorBoundary';
 
@@ -834,6 +835,8 @@ export const App: React.FC = () => {
           onNextGlobalTrack={playNextGlobalTrack} 
           userProfile={userProfile}
       />
+
+      <StoryEventModal />
 
       {fullScreenImage && <FullScreenViewer src={fullScreenImage} onClose={() => setFullScreenImage(null)} />}
       

@@ -39,7 +39,7 @@ test('cannot skip discovery, use unknown keys, use a future node, or show an uno
 test('wrong recipient keeps key and flags, returns bounded character hint', () => {
   const state = discover().progress;
   const result = applyStoryCommand(state, { type: 'present', itemId: 'key_nyx_radio' }, { characterId: 'miguel', locationId: 'condo', love: 9999 }, 1);
-  assert.equal(result.status, 'wrong_character'); assert.equal(result.progress, state); assert.match(result.dialogue, /เอริน/);
+  assert.equal(result.status, 'wrong_character'); assert.equal(result.progress, state); assert.match(result.dialogue, /สายลมเย็น|แผงไฟ/);
   assert.doesNotMatch(result.dialogue, /Midnight/);
 });
 test('duplicates are idempotent and reveal replay never awards new keys', () => {
@@ -155,4 +155,72 @@ test('cat-food culprit and Aurelia clue stay locked until Soul completes the fin
   assert.equal(hasPilotSpoiler('หมอโซลเป็นคนเอาอาหารแมวไปวางไว้', photo.progress), true);
   assert.equal(hasPilotSpoiler('รถ Aurelia มาป้วนเปี้ยนแถวคอนโดของมิเกล', photo.progress), true);
   assert.equal(hasPilotSpoiler('หมอโซลวางอาหารแมวและเห็นรถ Aurelia ใกล้คอนโด', vip.progress), false);
+});
+
+const marcus: StoryActorContext = { characterId: 'marcus', locationId: 'office', love: 0 };
+const jellie: StoryActorContext = { characterId: 'jellie', locationId: 'mall', love: 0 };
+
+function completeAureliaThread() {
+  const { vip } = completeCatFoodThread();
+  const n1 = applyStoryCommand(vip.progress, { type: 'node', nodeId: 'aurelia_soul_photo' }, soul, 1000);
+  const n2 = applyStoryCommand(n1.progress, { type: 'node', nodeId: 'aurelia_zoom_case' }, soul, 1100);
+  const n3 = applyStoryCommand(n2.progress, { type: 'present', itemId: 'key_aurelia_car_photo' }, marcus, 1200);
+  const n4 = applyStoryCommand(n3.progress, { type: 'present', itemId: 'key_aurelia_car_photo' }, miguel200, 1300);
+  const n5 = applyStoryCommand(n4.progress, { type: 'node', nodeId: 'aurelia_miguel_contract' }, miguel200, 1400);
+  const n6 = applyStoryCommand(n5.progress, { type: 'present', itemId: 'key_aurelia_contract_notice' }, mia, 1500);
+  const n7 = applyStoryCommand(n6.progress, { type: 'present', itemId: 'key_aurelia_contract_notice' }, jellie, 1600);
+  const n8 = applyStoryCommand(n7.progress, { type: 'node', nodeId: 'aurelia_miguel_zoom_rev13' }, miguel200, 1700);
+  const n9 = applyStoryCommand(n8.progress, { type: 'present', itemId: 'key_mrsa_fabric_sample' }, jellie, 1800);
+  const n10 = applyStoryCommand(n9.progress, { type: 'node', nodeId: 'aurelia_miguel_sewing_box' }, miguel200, 1900);
+  return { n1, n2, n3, n4, n5, n6, n7, n8, n9, n10 };
+}
+
+test('AiLuv Story 01 aurelia_miguel_watch completes all 10 nodes sequentially and enforces canon guardrails', () => {
+  const { vip } = completeCatFoodThread();
+  // Cannot start without cat_food completion
+  assert.equal(applyStoryCommand(emptyStoryProgress(), { type: 'node', nodeId: 'aurelia_soul_photo' }, soul, 1).status, 'locked');
+
+  const { n1, n2, n3, n4, n5, n6, n7, n8, n9, n10 } = completeAureliaThread();
+
+  assert.equal(n1.status, 'completed');
+  assert.deepEqual(n1.grantedItems, ['key_aurelia_car_photo']);
+
+  assert.equal(n2.status, 'completed');
+  assert.equal(n2.progress.flags['aurelia.case_number_found'], true);
+
+  assert.equal(n3.status, 'completed');
+  assert.equal(n3.progress.flags['aurelia.recovery_unit_identified'], true);
+
+  assert.equal(n4.status, 'completed');
+  assert.equal(n4.progress.flags['aurelia.miguel_recognized_logo'], true);
+
+  assert.equal(n5.status, 'completed');
+  assert.deepEqual(n5.grantedItems, ['key_aurelia_contract_notice']);
+
+  assert.equal(n6.status, 'completed');
+  assert.equal(n6.progress.flags['aurelia.mia_decoded_reference'], true);
+
+  assert.equal(n7.status, 'completed');
+  assert.equal(n7.progress.flags['aurelia.jellie_admitted_connection'], true);
+
+  assert.equal(n8.status, 'completed');
+  assert.deepEqual(n8.grantedItems, ['key_mrsa_fabric_sample']);
+
+  assert.equal(n9.status, 'completed');
+  assert.deepEqual(n9.grantedItems, ['key_mrsa_retrieval_order']);
+
+  assert.equal(n10.status, 'completed');
+  assert.equal(n10.progress.flags['aurelia.episode_complete'], true);
+  assert.equal(n10.progress.flags['aurelia.mrsa_archive_missing'], true);
+  assert.equal(n10.progress.flags['aurelia.miguel_target_reason_known'], true);
+
+  // All 4 new keys are in inventory
+  for (const k of ['key_aurelia_car_photo', 'key_aurelia_contract_notice', 'key_mrsa_fabric_sample', 'key_mrsa_retrieval_order']) {
+    assert.ok(n10.progress.keyItems[k]);
+  }
+
+  // Canon strict guardrail checks
+  assert.equal(hasPilotSpoiler('อุบัติเหตุของแม่มิเกลเป็นการลอบสังหาร', n10.progress), true);
+  assert.equal(hasPilotSpoiler('มีอาทำงานให้ handler รับคำสั่งมา', n10.progress), true);
+  assert.equal(hasPilotSpoiler('Offline Archive ของแม่ถูกขโมยโดยมาร์คัส', n10.progress), true);
 });

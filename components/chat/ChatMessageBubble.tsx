@@ -1,13 +1,130 @@
 import '../../styles/story.css';
 
 import React, { useState, useEffect } from 'react';
-import { KeyRound, RotateCcw, Sparkles, Brain, Eye, Coins, Check, Gift, ShoppingBag, Shirt, Target, Zap, Heart, Gem, ArrowRight, Star, Crown } from 'lucide-react';
+import { KeyRound, RotateCcw, Sparkles, Brain, Eye, Coins, Check, Gift, ShoppingBag, Shirt, Target, Zap, Heart, Gem, ArrowRight, Star, Crown, ChevronRight } from 'lucide-react';
 import { Message, CharacterId, CharacterQuest, RelationshipTier, DateScene } from '../../types';
 import { CHARACTER_DATA, SHOP_ITEMS } from '../../constants';
 import { FASHION_ITEMS } from '../../constants/fashion';
 import { getCharacterImageUrl } from '../../services/firebase';
 import { getBuffConfig } from '../../services/buffMechanics';
 import { EmojiIcon } from '../ui/EmojiIcon';
+import { ItemArtwork } from '../ui/ItemArtwork';
+import { StoryClueArt } from '../story/StoryClueArt';
+import { KEY_STORY_ITEMS } from '../../constants/storyThreads';
+import { useUIStore } from '../../store/uiStore';
+import { playSfx } from '../../utils/audioUtils';
+import type { StoryCommand, StoryNode } from '../../domain/story/types';
+import type { StoryKeyDelivery } from '../../types';
+
+// --- SUB-COMPONENTS ---
+
+const StoryKeyDeliveryCard = ({ 
+    delivery, 
+    characterName 
+}: { 
+    delivery: StoryKeyDelivery; 
+    characterName: string;
+}) => {
+    const [claimed, setClaimed] = useState(!!delivery.claimed);
+
+    const handleClaim = () => {
+        playSfx('story_item_received');
+        setClaimed(true);
+        delivery.claimed = true;
+        const fullItem = KEY_STORY_ITEMS.find(k => k.id === delivery.itemId);
+        if (fullItem) {
+            useUIStore.getState().setStoryEventModal({
+                type: 'item_received',
+                item: fullItem,
+                nodeTitle: delivery.nodeTitle,
+                nodeSummary: delivery.nodeSummary,
+                threadTitle: delivery.threadTitle,
+            });
+        }
+    };
+
+    return (
+        <div className="mt-2.5 p-3 rounded-2xl bg-gradient-to-br from-amber-500/10 via-purple-500/15 to-pink-500/10 border border-purple-300/80 dark:border-purple-500/40 shadow-xs relative overflow-hidden text-left">
+            <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl from-amber-400/20 to-transparent rounded-full blur-xl pointer-events-none" />
+            
+            <div className="flex items-center justify-between gap-2 mb-2 relative z-10">
+                <div className="flex items-center gap-1.5 min-w-0">
+                    <span className="p-1 rounded-md bg-gradient-to-tr from-amber-400 to-pink-500 text-white shadow-xs shrink-0">
+                        <Gift size={12} />
+                    </span>
+                    <span className="text-[11px] font-bold text-purple-900 dark:text-purple-200 truncate">
+                        {characterName} มอบของสำคัญให้คุณ
+                    </span>
+                </div>
+                {delivery.threadTitle && (
+                    <span className="text-[9px] font-medium text-purple-700 dark:text-purple-300 bg-purple-100/80 dark:bg-purple-950/70 px-2 py-0.5 rounded-full shrink-0">
+                        {delivery.threadTitle}
+                    </span>
+                )}
+            </div>
+
+            <div className="flex items-center gap-3 relative z-10">
+                <div className="shrink-0 p-1 bg-white/90 dark:bg-slate-800/90 rounded-2xl border border-purple-200 dark:border-purple-600/50 shadow-xs">
+                    <StoryClueArt
+                        item={{
+                            id: delivery.itemId,
+                            name: delivery.name,
+                            icon: (delivery.icon as any) || 'radio',
+                            imageUrl: delivery.imageUrl,
+                            type: 'key',
+                            description: delivery.description || '',
+                            hint: delivery.hint || '',
+                            hintCharacter: 'fia',
+                            hintLocation: 'gym',
+                            wrongCharacterHints: {},
+                            defaultHint: ''
+                        }}
+                        size="md"
+                    />
+                </div>
+
+                <div className="flex-1 min-w-0">
+                    <h4 className="text-xs font-bold text-slate-800 dark:text-white leading-snug truncate">
+                        {delivery.name}
+                    </h4>
+                    {delivery.description && (
+                        <p className="text-[10px] text-gray-600 dark:text-gray-300 line-clamp-2 mt-0.5 leading-relaxed">
+                            {delivery.description}
+                        </p>
+                    )}
+                </div>
+            </div>
+
+            <div className="mt-2.5 pt-2 border-t border-purple-200/60 dark:border-purple-800/40 flex items-center justify-between relative z-10">
+                <span className="text-[10px] text-purple-700/80 dark:text-purple-300/80 font-medium">
+                    {claimed ? 'เก็บเข้ากระเป๋าเบาะแสแล้ว' : 'แตะเพื่อรับของ'}
+                </span>
+
+                <button
+                    type="button"
+                    onClick={handleClaim}
+                    className={`px-3 py-1.5 rounded-xl font-bold text-[11px] flex items-center gap-1.5 transition-all active:scale-95 shadow-xs cursor-pointer ${
+                        claimed
+                            ? 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 border border-emerald-300/80 dark:border-emerald-700/60 hover:bg-emerald-200/80'
+                            : 'bg-gradient-to-r from-purple-600 via-pink-600 to-rose-500 text-white shadow-purple-500/25 hover:shadow-purple-500/40 hover:brightness-105'
+                    }`}
+                >
+                    {claimed ? (
+                        <>
+                            <Check size={12} className="text-emerald-600 dark:text-emerald-400" />
+                            <span>ได้รับแล้ว · ดูเบาะแส</span>
+                        </>
+                    ) : (
+                        <>
+                            <Sparkles size={12} className="text-amber-300" />
+                            <span>กดรับไอเทม</span>
+                        </>
+                    )}
+                </button>
+            </div>
+        </div>
+    );
+};
 
 // --- SUB-COMPONENTS ---
 
@@ -106,6 +223,46 @@ const parseMessageText = (input: any) => {
     return result;
 };
 
+const StandaloneSentItem = ({ message }: { message: Message }) => {
+    const key = message.storyKeyPresentation;
+    const gift = message.giftPresentation;
+    const fullKey = key ? KEY_STORY_ITEMS.find(item => item.id === key.itemId) : undefined;
+
+    const inspectKey = () => {
+        if (!fullKey) return;
+        useUIStore.getState().setStoryEventModal({
+            type: 'item_received',
+            item: fullKey,
+            threadTitle: 'ของสำคัญในกระเป๋า',
+            nodeTitle: fullKey.name,
+            nodeSummary: fullKey.description,
+        });
+    };
+
+    return (
+        <div className="mb-3 flex justify-end pr-1 animate-in fade-in slide-in-from-bottom-2 duration-300">
+            <div className="flex max-w-[76%] flex-col items-center text-center">
+                {key ? (
+                    <button type="button" onClick={inspectKey} aria-label={`เปิดดู ${key.name} แบบขยาย`} className="group rounded-3xl p-1 focus:outline-none focus:ring-2 focus:ring-pink-400">
+                        <span className="block transition-transform duration-200 group-hover:-translate-y-1 group-active:scale-95">
+                            <StoryClueArt item={fullKey || { id: key.itemId, name: key.name, icon: key.icon || 'radio', imageUrl: key.imageUrl }} size="lg" className="shadow-[0_18px_40px_rgba(15,23,42,0.2)]" />
+                        </span>
+                    </button>
+                ) : gift ? (
+                    <div className="relative grid h-28 w-28 place-items-center drop-shadow-[0_18px_24px_rgba(236,72,153,0.25)]">
+                        <ItemArtwork itemId={gift.itemId} name={gift.name} className="h-24 w-24" />
+                        <Sparkles size={15} className="absolute right-0 top-3 text-amber-400" aria-hidden="true" />
+                        <Sparkles size={11} className="absolute bottom-4 left-0 text-pink-400" aria-hidden="true" />
+                    </div>
+                ) : null}
+                <span className="mt-1 text-[10px] font-bold text-slate-500 dark:text-slate-300">
+                    {key ? `ยื่น ${key.name} ให้ดู` : gift ? `มอบ ${gift.name} ให้ ${gift.recipientName}` : ''}
+                </span>
+            </div>
+        </div>
+    );
+};
+
 interface ChatMessageBubbleProps {
     onStoryRetry?: (messageId: string) => void;
     storyBusy?: boolean;
@@ -121,6 +278,11 @@ interface ChatMessageBubbleProps {
     diamonds: number;
     onBuyItem?: (itemId: string, messageId: string) => void;
     onAcceptQuest?: (quest: CharacterQuest, charId: CharacterId, msgId: string) => void;
+    availableStoryAction?: {
+        node: StoryNode;
+        command: StoryCommand;
+    } | null;
+    onStoryAction?: (command: StoryCommand) => void;
 }
 
 export const ChatMessageBubble: React.FC<ChatMessageBubbleProps> = ({
@@ -137,7 +299,9 @@ export const ChatMessageBubble: React.FC<ChatMessageBubbleProps> = ({
     gold,
     diamonds,
     onBuyItem,
-    onAcceptQuest
+    onAcceptQuest,
+    availableStoryAction,
+    onStoryAction
 }) => {
     const isUser = msg.sender === 'user';
     const cleanText = typeof msg.text === 'string' ? msg.text.trim() : "";
@@ -156,7 +320,7 @@ export const ChatMessageBubble: React.FC<ChatMessageBubbleProps> = ({
     }
 
     // Special case: If body is empty (pure narrative action), render as a specialized narrative bubble
-    const isPureNarrative = narrativePart && !bodyPart && !msg.imageUrl && !msg.interactiveItem;
+    const isPureNarrative = narrativePart && !bodyPart && !msg.imageUrl && !msg.interactiveItem && !msg.giftPresentation;
 
     if (msg.storyInteraction && msg.storyInteraction.status !== 'complete') {
         const waiting = msg.storyInteraction.status === 'pending' && storyBusy;
@@ -165,6 +329,9 @@ export const ChatMessageBubble: React.FC<ChatMessageBubbleProps> = ({
             {!waiting && <p>ลองอีกครั้งได้ ของและความคืบหน้ายังเหมือนเดิม</p>}</div>
             {!waiting && onStoryRetry && <button type="button" className="story-icon-button" disabled={storyBusy} aria-label="ลองบทสนทนาเรื่องราวอีกครั้ง" onClick={() => onStoryRetry(msg.id)}><RotateCcw size={17} /></button>}
         </div>;
+    }
+    if (isUser && (msg.storyKeyPresentation || msg.giftPresentation)) {
+        return <StandaloneSentItem message={msg} />;
     }
     if (isPureNarrative && !msg.storyInteraction) {
         return (
@@ -231,7 +398,7 @@ export const ChatMessageBubble: React.FC<ChatMessageBubbleProps> = ({
             )}
 
             {/* MAIN BUBBLE (Render if body, image, items, or quest exist) */}
-            {(bodyPart || msg.imageUrl || msg.interactiveItem || msg.isImageLoading || msg.characterQuest) && (
+            {(bodyPart || msg.imageUrl || msg.interactiveItem || msg.giftPresentation || msg.isImageLoading || msg.characterQuest) && (
                 <div className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
                     {showAvatar && <BubbleAvatar charId={msg.sender as CharacterId} />}
 
@@ -243,9 +410,9 @@ export const ChatMessageBubble: React.FC<ChatMessageBubbleProps> = ({
                         )}
 
                         {/* NORMAL TEXT MESSAGE BUBBLE */}
-                        {(bodyPart || msg.imageUrl || msg.interactiveItem || msg.isImageLoading) && (
+                        {(bodyPart || msg.imageUrl || msg.interactiveItem || msg.giftPresentation || msg.isImageLoading) && (
                             <div className={`w-full rounded-2xl px-4 py-2.5 text-sm relative shadow-sm leading-relaxed group transition-all duration-300 ${messageStyle}`}>
-                                {msg.storyInteraction && !isUser && <div className="story-dialogue-label"><KeyRound size={12} aria-hidden="true" /><span>{msg.storyInteraction.title}</span></div>}
+                                {msg.storyInteraction && !isUser && (msg.storyInteraction.sequenceIndex ?? 0) === 0 && <div className="story-dialogue-label"><KeyRound size={12} aria-hidden="true" /><span>{msg.storyInteraction.title}</span></div>}
                                 {msg.isEventMessage && !isUser && <span className="absolute -top-2 -right-2 bg-purple-500 text-white text-[8px] font-bold px-1.5 py-0.5 rounded-md shadow-sm z-10 tracking-wider">STORY</span>}
                             
                             {/* IMAGE RENDERING */}
@@ -272,6 +439,21 @@ export const ChatMessageBubble: React.FC<ChatMessageBubbleProps> = ({
                                     <Sparkles size={12} /> Sending photo...
                                 </div>
                             )}
+
+                            {msg.giftPresentation && isUser && (
+                                <div className="mb-2 min-w-[190px] rounded-2xl border border-white/35 bg-white/16 p-3 shadow-inner backdrop-blur-sm">
+                                    <div className="flex items-center gap-3">
+                                        <div className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-white/90 shadow-md dark:bg-slate-950/80">
+                                            <ItemArtwork itemId={msg.giftPresentation.itemId} name={msg.giftPresentation.name} className="h-12 w-12" />
+                                        </div>
+                                        <div className="min-w-0">
+                                            <span className="inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-[0.16em] text-pink-100"><Gift size={10} /> Give</span>
+                                            <p className="mt-0.5 truncate text-sm font-extrabold text-white">{msg.giftPresentation.name}</p>
+                                            <p className="mt-0.5 truncate text-[10px] font-medium text-pink-100/90">ถึง {msg.giftPresentation.recipientName}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                             
                             {/* Render BODY text (Parsed for gold etc) */}
                             <div className="break-words whitespace-pre-wrap">{bodyPart ? parseMessageText(bodyPart) : ""}</div>
@@ -285,7 +467,7 @@ export const ChatMessageBubble: React.FC<ChatMessageBubbleProps> = ({
                                             return (
                                                 <>
                                                     <div className="absolute inset-0 bg-gradient-to-r from-yellow-100 to-amber-100 dark:from-yellow-500/10 dark:to-amber-500/10 pointer-events-none"></div>
-                                                    <div className={`text-3xl filter drop-shadow-md transition-transform ${msg.interactiveItem.purchased ? 'grayscale opacity-50' : 'group-hover/item:scale-110'} relative z-10`}>💰</div>
+                                                    <div className={`filter drop-shadow-md transition-transform ${msg.interactiveItem.purchased ? 'grayscale opacity-50' : 'group-hover/item:scale-110'} relative z-10`}><ItemArtwork itemId="gift_gold" name="Ang Pao" className="h-12 w-12" /></div>
                                                     <div className={`flex-1 min-w-0 ${msg.interactiveItem.purchased ? 'opacity-50' : ''} relative z-10`}>
                                                         <div className="text-[10px] font-bold text-yellow-600 uppercase tracking-widest mb-0.5">Cash Gift</div>
                                                         <h4 className="font-bold text-slate-800 dark:text-white truncate leading-tight">Transfer Slip</h4>
@@ -312,7 +494,11 @@ export const ChatMessageBubble: React.FC<ChatMessageBubbleProps> = ({
                                         <>
                                             <div className={`absolute inset-0 ${gradientClass} pointer-events-none`}></div>
                                             
-                                            <div className={`text-3xl filter drop-shadow-md transition-transform ${msg.interactiveItem!.purchased ? 'grayscale opacity-50' : 'group-hover/item:scale-110'} relative z-10`}><EmojiIcon emoji={msg.interactiveItem!.emoji} /></div>
+                                            <div className={`filter drop-shadow-md transition-transform ${msg.interactiveItem!.purchased ? 'grayscale opacity-50' : 'group-hover/item:scale-110'} relative z-10`}>
+                                                {fullItem
+                                                    ? <ItemArtwork itemId={fullItem.id} name={fullItem.name} className="h-12 w-12" />
+                                                    : <span className="text-3xl"><EmojiIcon emoji={msg.interactiveItem!.emoji} /></span>}
+                                            </div>
                                             
                                             <div className={`flex-1 min-w-0 ${msg.interactiveItem!.purchased ? 'opacity-50' : ''} relative z-10`}>
                                                 <div className={`text-[10px] font-bold uppercase tracking-widest mb-0.5 ${msg.interactiveItem!.isGift ? 'text-green-600 dark:text-green-500' : 'text-gray-400'}`}>
@@ -398,6 +584,43 @@ export const ChatMessageBubble: React.FC<ChatMessageBubbleProps> = ({
                                             </button>
                                         );
                                     })()}
+                                </div>
+                            )}
+
+                            {/* STORY KEY ITEM DELIVERY ATTACHED TO CHARACTER BUBBLE */}
+                            {msg.storyKeyDelivery && !isUser && (
+                                <StoryKeyDeliveryCard
+                                    delivery={msg.storyKeyDelivery}
+                                    characterName={CHARACTER_DATA[characterId]?.name || 'ตัวละคร'}
+                                />
+                            )}
+
+                            {/* STORY ACTION ATTACHED TO CHARACTER BUBBLE */}
+                            {availableStoryAction && !isUser && (
+                                <div className="mt-2.5 pt-2 border-t border-gray-100/80 dark:border-slate-700/60">
+                                    <button
+                                        type="button"
+                                        onClick={() => onStoryAction && onStoryAction(availableStoryAction.command)}
+                                        disabled={storyBusy}
+                                        className="w-full flex items-center justify-between gap-2.5 px-3 py-2 rounded-xl bg-indigo-50/80 dark:bg-slate-800/90 hover:bg-indigo-100/90 dark:hover:bg-slate-700/90 border border-indigo-200/70 dark:border-indigo-500/20 text-indigo-900 dark:text-indigo-200 shadow-xs transition-all duration-200 active:scale-[0.98] group/story-btn cursor-pointer text-left"
+                                    >
+                                        <div className="flex items-center gap-2 min-w-0">
+                                            <span className="p-1 rounded-lg bg-indigo-100 dark:bg-indigo-900/60 text-indigo-600 dark:text-indigo-300 shrink-0">
+                                                {availableStoryAction.node.trigger === 'present' ? <KeyRound size={13} /> : <Sparkles size={13} />}
+                                            </span>
+                                            <div className="flex flex-col min-w-0">
+                                                <span className="text-[9px] font-bold text-indigo-500/90 dark:text-indigo-400 uppercase tracking-wider truncate">
+                                                    {availableStoryAction.node.title}
+                                                </span>
+                                                <span className="text-xs font-semibold text-slate-800 dark:text-white truncate">
+                                                    {availableStoryAction.node.actionLabel}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-1 text-[11px] font-medium text-indigo-600 dark:text-indigo-400 shrink-0 pl-1">
+                                            <ChevronRight size={14} className="group-hover/story-btn:translate-x-0.5 transition-transform" />
+                                        </div>
+                                    </button>
                                 </div>
                             )}
 

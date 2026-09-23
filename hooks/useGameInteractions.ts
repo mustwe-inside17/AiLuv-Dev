@@ -26,6 +26,7 @@ import { getSecretUnlockFromText } from '../services/ai/dynamicContext';
 import { generateContextualFallbackChoices } from '../utils/questUtils';
 import { sendCharacterMilestoneMail } from '../services/mailSystem';
 import { calculateQuestLoveReward, getQuestChoiceMultiplier, isBlockingCharacterQuest } from '../domain/quests/questState';
+import { canInviteOnDate } from '../domain/chat/quickActions';
 
 interface UseGameInteractionsProps {
     userProfile: UserProfile | null;
@@ -1184,6 +1185,16 @@ Player said/performed: "${text}" (Intended activity/scene: ${targetDesc}).
                 return;
             }
 
+            if (gameState.partyMember === charId) {
+                triggerNotification('Already Together', `${CHARACTER_DATA[charId].name} is already in your party.`, [], 'info');
+                return;
+            }
+
+            if (gameState.partyMember && gameState.partyMember !== charId) {
+                triggerNotification('Party Full', `Dismiss ${CHARACTER_DATA[gameState.partyMember].name} before inviting someone else.`, [], 'info');
+                return;
+            }
+
             const PARTY_COST = 15;
             if (gameState.energy < PARTY_COST) {
                 triggerNotification('Too Tired', `Need ${PARTY_COST} energy to invite.`, [], 'error');
@@ -1245,6 +1256,17 @@ Player said/performed: "${text}" (Intended activity/scene: ${targetDesc}).
 
         // [MARCUS ENHANCED]: AI CONSENT EVALUATION FOR DATE INVITE ACTION
         if (type === 'invite_date' && dateTarget) {
+            const currentTier = gameState.relationshipTiers[charId];
+            const chemistry = gameState.chemistryScores?.[charId] || 0;
+            if (!canInviteOnDate(currentTier, Math.max(chemistry, 60))) {
+                triggerNotification('ยังชวนเดตไม่ได้', 'ต้องสนิทกันถึงระดับ Friend ก่อน', [], 'info');
+                return;
+            }
+            if (!canInviteOnDate(currentTier, chemistry)) {
+                triggerNotification('Chemistry ยังไม่ถึง', 'ต้องมี Chemistry อย่างน้อย 60%', [], 'info');
+                return;
+            }
+
             const targetName = dateTarget !== 'freestyle' ? (DATE_LOCATIONS_DATA[dateTarget as SceneType]?.nameTh || dateTarget) : "เดต/โมเมนต์พิเศษแบบอิสระ";
             const targetEn = dateTarget !== 'freestyle' ? (DATE_LOCATIONS_DATA[dateTarget as SceneType]?.nameEn || dateTarget) : "Freestyle Romance";
 
@@ -1549,13 +1571,20 @@ The player clicked to invite you on a date to: "${targetName}" (${targetEn}).
 
         if (ACTION_NARRATIVES[type]) {
             const narrativeText = ACTION_NARRATIVES[type];
+            const giftItem = isGiftAction && itemId ? SHOP_ITEMS.find(item => item.id === itemId) : undefined;
             setMessagesMap(prev => ({
                 ...prev,
                 [charId]: [...(prev[charId] || []), {
                     id: `act_${Date.now()}`,
                     sender: 'user',
                     text: narrativeText,
-                    timestamp: Date.now()
+                    timestamp: Date.now(),
+                    giftPresentation: giftItem ? {
+                        itemId: giftItem.id,
+                        name: giftItem.name,
+                        emoji: giftItem.emoji,
+                        recipientName: CHARACTER_DATA[charId].name
+                    } : undefined
                 }]
             }));
         }

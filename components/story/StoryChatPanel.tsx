@@ -7,12 +7,15 @@ import { emptyStoryProgress, getAvailableStoryNodes, storyLockReason } from '../
 import type { StoryCommand } from '../../domain/story/types';
 import type { CharacterId } from '../../types';
 import { StoryItemIcon } from './StoryIcon';
+import { StoryClueArt } from './StoryClueArt';
 import '../../styles/story.css';
 
 export function StoryChatPanel({ characterId, disabled, onAction }: { characterId: CharacterId; disabled: boolean; onAction: (command: StoryCommand) => void }) {
   const story = useGameStore(state => state.story) || emptyStoryProgress();
   const location = useGameStore(state => state.currentLocation);
   const love = useGameStore(state => state.loveScores[characterId] || 0);
+  const isVoiceMode = useGameStore(state => !!state.voiceChat?.isActive);
+  const isDateMode = useGameStore(state => !!state.currentDateScene);
   const openPhone = useGameStore(state => state.openPhone);
   const [open, setOpen] = useState(false);
   const [position, setPosition] = useState<React.CSSProperties>({});
@@ -51,17 +54,17 @@ export function StoryChatPanel({ characterId, disabled, onAction }: { characterI
   }, [open]);
   const act = (command: StoryCommand) => { close(); onAction(command); };
   return <div className="story-ui story-key-control" ref={root}>
-    <button type="button" ref={trigger} className="story-key-trigger" aria-label={here ? 'Key · มีเบาะแสให้ตามต่อ' : 'เปิดเมนู Key'} title="Key Story" aria-haspopup="dialog" aria-expanded={open} aria-controls={id} disabled={disabled} onClick={toggle}>
-      <KeyRound size={18} aria-hidden="true" />{here && <span className="story-hint-dot" aria-hidden="true" />}
+    <button type="button" ref={trigger} className="story-key-trigger" aria-label={here ? 'Key · มีเบาะแสให้ตามต่อ' : 'เปิดเมนู Key'} title={here ? 'มีเบาะแสให้ตามต่อ (Key Story)' : 'Key Story'} aria-haspopup="dialog" aria-expanded={open} aria-controls={id} disabled={disabled} onClick={toggle}>
+      <KeyRound size={18} aria-hidden="true" />{here && <span className="story-hint-dot story-hint-dot-pink" aria-hidden="true"><span className="story-hint-pulse" aria-hidden="true" /></span>}
     </button>
     {open && createPortal(<div className="story-ui story-key-popover" style={position} role="dialog" aria-label="ของสำคัญและเบาะแส" id={id} ref={popup}>
       <header><div><span className="story-eyebrow">KEY STORY</span><h3>ของชิ้นเล็ก เรื่องราวชิ้นใหญ่</h3></div><button type="button" className="story-icon-button" aria-label="ปิดเมนู Key" onClick={close}><X size={18} /></button></header>
       <div className="story-popover-body">
         {actions.map(node => {
-          const lock = storyLockReason(node, story, { characterId, locationId: location, love });
+          const lock = storyLockReason(node, story, { characterId, locationId: location, love, busy: isVoiceMode || isDateMode });
           return <button type="button" key={node.id} className="story-menu-action" disabled={!!lock} onClick={() => act({ type: 'node', nodeId: node.id })}><MessageCircle size={19} /><span><strong>{node.actionLabel}</strong><small>{lock || 'มีเรื่องให้ชวนคุย'}</small></span><ChevronRight size={16} /></button>;
         })}
-        {keys.length ? keys.map(item => <button type="button" key={item.id} className="story-menu-action" onClick={() => act({ type: 'present', itemId: item.id })}><span className="story-mini-item"><StoryItemIcon icon={item.icon} size={22} /></span><span><strong>{item.name}</strong><small>หยิบให้ดู</small></span><ChevronRight size={16} /></button>) : <p className="story-muted story-popover-empty">ยังไม่มี Key · บางบทสนทนาจะพาคุณไปพบของสำคัญ</p>}
+        {keys.length ? keys.map(item => <button type="button" key={item.id} className="story-menu-action" onClick={() => act({ type: 'present', itemId: item.id })}><span className="story-mini-item p-0.5 overflow-hidden"><StoryClueArt item={item} size="sm" /></span><span><strong>{item.name}</strong><small>หยิบให้ดู</small></span><ChevronRight size={16} /></button>) : <p className="story-muted story-popover-empty">ยังไม่มี Key · บางบทสนทนาจะพาคุณไปพบของสำคัญ</p>}
       </div>
       <footer><p>ให้ผิดคน ของไม่หาย</p><button type="button" className="story-text-button" onClick={() => { close(); openPhone('story'); }}><BookOpen size={15} /> สมุดเรื่องราว <ChevronRight size={14} /></button></footer>
     </div>, document.body)}
@@ -73,6 +76,8 @@ export function StoryContinuation({ characterId, disabled, onAction }: { charact
   const story = useGameStore(state => state.story) || emptyStoryProgress();
   const location = useGameStore(state => state.currentLocation);
   const love = useGameStore(state => state.loveScores[characterId] || 0);
+  const isVoiceMode = useGameStore(state => !!state.voiceChat?.isActive);
+  const isDateMode = useGameStore(state => !!state.currentDateScene);
   const openPhone = useGameStore(state => state.openPhone);
   const next = STORY_NODES.find(node => node.id === story.activeSession?.nodeId);
   const available = getAvailableStoryNodes(story).filter(node => node.characterId === characterId && node.locationId === location);
@@ -83,7 +88,7 @@ export function StoryContinuation({ characterId, disabled, onAction }: { charact
   return <div className="story-ui story-continuation" aria-label="เรื่องราวที่เล่นต่อได้" aria-live="polite">
     {finished && <p>จบตอนแล้ว · {STORY_THREADS.find(thread => thread.id === finished.threadId)?.title}</p>}
     {nodes.map(node => {
-      const lock = storyLockReason(node, story, { characterId, locationId: location, love });
+      const lock = storyLockReason(node, story, { characterId, locationId: location, love, busy: isVoiceMode || isDateMode });
       return <div key={node.id}>
         <small>{STORY_THREADS.find(thread => thread.id === node.threadId)?.title}</small>
         {lock ? <><p>{node.guide}</p><button type="button" disabled={disabled} onClick={() => openPhone('story')}>ดูเส้นทางในสมุดเรื่องราว</button></>

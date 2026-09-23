@@ -15,8 +15,9 @@
     <meta name="apple-mobile-web-app-title" content="AiLuv">
     
     <!-- App Icon -->
-    <link rel="apple-touch-icon" href="/images/icon.png">
-    <link rel="icon" type="image/png" href="/images/icon.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="/images/icon-192.png">
+    <link rel="icon" type="image/svg+xml" href="/images/icon.svg">
 
     <!-- Display + Thai body fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -292,19 +293,14 @@
   <body class="h-safe-screen overflow-hidden selection:bg-rose-500 selection:text-white overscroll-none font-sans transition-colors duration-300">
     <div id="root"></div>
     <script>
-      const isPreview = window.location.hostname.includes('googleusercontent') || 
-                       window.location.hostname.includes('webcontainer') ||
-                       window.location.hostname.includes('ai.studio') ||
-                       window.location.hostname.includes('github.dev');
-      
-      console.log('🔍 PWA Check:', { isPreview, hostname: window.location.hostname });
-
-      if ('serviceWorker' in navigator && !isPreview) {
+      if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
           navigator.serviceWorker.register('/sw.js', { scope: '/' })
-            .then(reg => console.log('SW registered'))
+            .then(reg => {
+              console.log('✅ Service Worker registered successfully', reg.scope);
+            })
             .catch(err => {
-                console.warn('SW registration skipped:', err.message);
+              console.warn('Service Worker registration note:', err.message);
             });
         });
       }

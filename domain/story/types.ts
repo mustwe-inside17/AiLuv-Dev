@@ -4,24 +4,28 @@ export interface KeyStoryItem {
   id: string;
   type: 'key';
   name: string;
-  icon: 'radio' | 'receipt' | 'maid_charm' | 'photo' | 'vip_card';
+  icon: 'radio' | 'receipt' | 'maid_charm' | 'photo' | 'vip_card' | 'document' | 'fabric' | 'box';
   description: string;
   hint: string;
   hintCharacter: CharacterId;
   hintLocation: LocationId;
   wrongCharacterHints: Partial<Record<CharacterId, string>>;
   defaultHint: string;
+  imageUrl?: string;
 }
+
+export type StoryKind = 'life' | 'story';
 
 export interface StoryThread {
   id: string;
   sequence: number;
-  kind: 'life' | 'story';
-  icon: 'radio' | 'door';
+  kind: StoryKind;
+  icon: 'radio' | 'door' | 'shield';
   title: string;
   subtitle: string;
   intro: string;
   completion: string;
+  coverImage?: string;
 }
 
 export interface StoryRevealRule {
